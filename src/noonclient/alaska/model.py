@@ -43,6 +43,37 @@ class NoonBeaconItem:
 
 
 @dataclass
+class NoonBLEEventRequest:
+    driver_version: str = None
+    noise_dbm: int = None
+    firmware_version: int = None
+    chip_hardware_version: str = None
+    ble_connect_state: str = None
+    rssi_dbm: int = None
+    mtu_size: int = None
+    security_type: Any = None
+    data_rate: int = None
+    mac_address: str = None
+    ble_on_off_state: str = None
+    security_family: str = None
+    timestamp: str = None
+
+
+@dataclass
+class NoonBulbDetectionRequest:
+    line: str = None
+    propagateDimCurve: bool = None
+    isSteadyState: bool = None
+
+
+@dataclass
+class NoonBulbDetectionResponse:
+    line: str
+    bulbType: str
+    dimmable: bool
+
+
+@dataclass
 class NoonCapabilities:
     powerRating: Any = None
     dimming: Any = None
@@ -53,6 +84,41 @@ class NoonChange:
     guid: str = None
     tid: int = None
     fields: list[NoonField] = None
+
+
+@dataclass
+class NoonChangeLightsOnRequest:
+    space: str = None
+    lightsOn: bool = None
+    tid: int = None
+
+
+@dataclass
+class NoonChangeSceneRequest:
+    space: str = None
+    activeScene: str = None
+    f129on: bool = None
+    tid: int = None
+
+
+@dataclass
+class NoonChangeWholeHomeSceneRequest:
+    structure: str = None
+    scene: str = None
+
+
+@dataclass
+class NoonMobileTelemetryRequest:
+    system_event: NoonSystemEventRequest = None
+    setup_event: NoonSetupEventRequest = None
+    wifi_event: NoonWiFiEventRequest = None
+    ble_event: NoonBLEEventRequest = None
+
+
+class NoonCurrentSamplingRequest:
+    line: str = None
+    propagateDimCurve: bool = None
+    isSteadyState: bool = None
 
 
 @dataclass
@@ -118,16 +184,16 @@ class NoonDexResponse:
 
 @dataclass
 class NoonDexUrls:
-    privacyPolicy: str
-    termsOfService: str
-    emailVerificationKB: str
-    dimmingKB: str
-    alexaKB: str
-    schedulingKB: str
-    googleAssistantKB: str
-    pairingKB: str
-    support: str
-    contact: str
+    privacyPolicy: str = None
+    termsOfService: str = None
+    emailVerificationKB: str = None
+    dimmingKB: str = None
+    alexaKB: str = None
+    schedulingKB: str = None
+    googleAssistantKB: str = None
+    pairingKB: str = None
+    support: str = None
+    contact: str = None
 
 
 @dataclass
@@ -155,6 +221,12 @@ class NoonField:
 
 
 @dataclass
+class NoonGeofenceEvent:
+    structure: str = None
+    entered: bool = None
+
+
+@dataclass
 class NoonLease:
     structure: NoonStructure = None
     grants: Any = None
@@ -167,6 +239,13 @@ class NoonLight:
     bulbQuantity: int = None
     bulbType: str = None
     fixtureType: str = None
+
+
+@dataclass
+class NoonLightsOnStructureRequest:
+    lightsOn: bool = None
+    structure: str = None
+    tid: int = None
 
 
 @dataclass
@@ -228,6 +307,11 @@ class NoonNightLightMode:
 
 
 @dataclass
+class NoonOtaRequest:
+    guid: str = None
+
+
+@dataclass
 class NoonOtaState:
     type: str = None
     guid: str = None
@@ -252,6 +336,14 @@ class NoonProvisionedKey:
 @dataclass
 class NoonProvisionedKeyHolder:
     provisionedKey: NoonProvisionedKey = None
+
+
+@dataclass
+class NoonPulseLineRequest:
+    line: str = None
+    onTime: int = None
+    offTime: int = None
+    count: int = None
 
 
 @dataclass
@@ -299,6 +391,42 @@ class NoonScheduleOff:
 class NoonScheduleOn:
     hour: int = None
     minute: int = None
+
+
+@dataclass
+class NoonSetDeviceModeRequest:
+    device: str = None
+    mode: str = None
+    line: str = None
+
+
+@dataclass
+class NoonSetLineLightLevelRequest:
+    line: str = None
+    lightLevel: int = None
+    tid: int = None
+    transitionTime: int = None
+
+
+@dataclass
+class NoonSetLineLightsOnRequest:
+    line: str = None
+    lightsOn: bool = None
+    tid: int = None
+
+
+@dataclass
+class NoonSetupEventRequest:
+    transaction_id: str = None
+    device_type: str = None
+    operation: str = None
+    event_message: str = None
+    error_code: str = None
+    status: str = None
+    user_id: str = None
+    event_type: str = None
+    device_id: str = None
+    timestamp: str = None
 
 
 @dataclass
@@ -358,6 +486,22 @@ class NoonStructureInvitationsResponse:
 
 
 @dataclass
+class NoonSystemEventRequest:
+    transaction_id: str = None
+    user_id: str = None
+    timestamp: str = None
+    app_name: str = None
+    app_version: str = None
+    phone_hardware: str = None
+    phone_os: str = None
+    firmware_version: str = None
+    phone_name: str = None
+    location_permission: str = None
+    notification_permission: str = None
+    app_launch_time: int = None
+
+
+@dataclass
 class NoonUser:
     guid: str = None
     name: str = None
@@ -371,7 +515,7 @@ class NoonVacationMode:
     enabled: bool = None
     spaces: list[NoonSpace] = None
 
-    #def describeContents():
+    # def describeContents():
     #    return 0
 
 
@@ -406,3 +550,21 @@ class NoonWholeHomeSceneSpace:
     spaceGuid: str = None
     sceneGuid: str = None
     allOff: bool = None
+
+
+@dataclass
+class NoonWiFiEventRequest:
+    driver_version: str = None
+    n_capable_bit: int = None
+    noise_dbm: int = None
+    ht_mode: str = None
+    firmware_version: str = None
+    ssid: str = None
+    bssid: str = None
+    chip_hardware_version: str = None
+    rssi_dbm: int = None
+    mtu_size: int = None
+    security_type: str = None
+    data_rate: int = None
+    mac_address: str = None
+    timestamp: str = None
