@@ -470,19 +470,14 @@ class NoonStructure:
 
 
 @dataclass
-class NoonStructure_:
+class NoonStructure__:
     guid: str = None
     accountInvitations: list[NoonAccountInvitation] = None
 
 
 @dataclass
-class NoonStructure__:
-    guid: str = None
-
-
-@dataclass
 class NoonStructureInvitationsResponse:
-    structure: NoonStructure_ = None
+    structure: NoonStructure__ = None
 
 
 @dataclass
