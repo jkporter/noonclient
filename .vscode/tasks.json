@@ -43,7 +43,7 @@
             "type": "shell",
             "command": "python3 -m pip install --upgrade build",
             "windows":{
-                "command": "py -m pip install --upgrade builds"
+                "command": "py -m pip install --upgrade build"
             }
         },
     ]
