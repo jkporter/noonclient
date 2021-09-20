@@ -1,1 +1,1 @@
-from .noonclient import NoonClient, SUBSCRIBABLE_MODEL_TYPES
+from .noonclient import NoonClient

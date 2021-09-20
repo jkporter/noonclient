@@ -1,43 +1,26 @@
-from datetime import datetime, timedelta
-from types import TracebackType
-from typing import Any, Callable, Coroutine, Optional, Type
-from noonclient.alaska.model import NoonArea, NoonBase, NoonChange, NoonDevice, NoonDexResponse, NoonEndpoints, NoonLight, NoonLine, NoonLoginRequest, NoonLoginResponse, NoonModel, NoonScene, NoonSpace, NoonStructure, NoonViper
 import aiohttp
+import random
+from types import TracebackType
+from typing import Optional, Type, Union
+from aiohttp import hdrs
+from aiohttp.client_exceptions import ClientResponseError
+from noonclient.alaska.model import NoonDexResponse, NoonDexUrls, NoonEndpoints, NoonLoginRequest, NoonLoginResponse, NoonModel, NoonSetLineLightLevelRequest, NoonSetLineLightsOnRequest, NoonViper
 from noonclient.alaska.model import NoonLoginResponse
-from noonclient._serialization import _models_fields_types, _json_seralize, _get_loads
+from noonclient._serialization import _json_seralize, _get_loads
 from noonclient.alaska.kush import GraphQLGenerator
-
-SUBSCRIBABLE_MODEL_TYPES = [NoonArea,
-                            NoonBase,
-                            NoonDevice,
-                            NoonLight,
-                            NoonLine,
-                            NoonScene,
-                            NoonSpace,
-                            NoonStructure]
-
-
-def _model_assign(target: Any, *sources: dict[str, Any]):
-    for source in sources:
-        for k, v in source.items():
-            if getattr(target, k) != v:
-                setattr(target, k, v)
-
-    return target
 
 
 class NoonClient:
-    def __init__(self, email: str, password: str, *, on_change: Callable[[NoonChange], None] = None):
-        self.email = email
-        self.password = password
-        self.on_change: Callable[[NoonChange], None] = on_change
-        self.__loginReponse: NoonLoginResponse = None
-        self.__loginResponseDate: datetime = None
-        self.__models = dict()
+    _PING = "{\"ping\":\"milk shake\"}"
+
+    _NOON_MODEL_GRAPH_QL_STRING = GraphQLGenerator.generate(NoonModel)
+
+    def __init__(self):
+        self.__token: str = None
         self.__session = aiohttp.ClientSession(
             raise_for_status=True, json_serialize=_json_seralize)
-        self.__subscriptions = set()
         self.__endpoints: NoonEndpoints = None
+        self.__transactionid: int = random.randrange(1073741823) + 1000
 
     async def __aenter__(self) -> "NoonClient":
         return self
@@ -53,75 +36,103 @@ class NoonClient:
     async def close(self) -> None:
         return await self.__session.close()
 
-    async def authenticate(self):
-        if(self.__loginResponseDate is None or (seconds_delta := (datetime.now() - self.__loginResponseDate).total_seconds()) >= self.__loginReponse.renewLifetime):
-            path = '/api/login'
-            data = NoonLoginRequest(self.email, self.password)
-        elif(seconds_delta >= self.__loginReponse.lifetime):
-            path = '/token/renew'
-            data = self.__loginReponse
-        else:
-            return
+    async def __authrequest(self, method, url, **kwargs):
+        raise_for_status: Union[bool, None] = kwargs['raise_for_status'] if 'raise_for_status' in kwargs else None
 
-        async with self.__session.post('https://finn.api.noonhome.com' + path, json=data) as response:
-            self.__loginReponse = await response.json(loads=_get_loads(NoonLoginResponse))
-            self.__loginResponseDate = datetime.strptime(
-                response.headers['Date'], '%a, %d %b %Y %H:%M:%S %Z')
-            headers = {'Content-Type': 'application/graphql',
-                       'Authorization': 'Token ' + self.token}
-            async with self.__session.get('https://dex.api.noonhome.com/api/endpoints', headers=headers) as response:
+        kwargs = dict(kwargs)
+        if 'headers' not in kwargs:
+            kwargs['headers'] = dict()
+
+        kwargs['headers']['Authorization'] = 'Token ' + self.__token
+        kwargs['raise_for_status'] = True
+
+        try:
+            return await self.__session.request(method, url, **kwargs)
+        except ClientResponseError as err:
+            if err.status != 401:
+                raise err
+            
+            await self._renew_token_sync()
+
+            kwargs['headers']['Authorization'] = 'Token ' + self.__token
+            del kwargs['raise_for_status']
+            if raise_for_status is not None:
+                kwargs['raise_for_status'] = raise_for_status
+
+            return await self.__session.request(method, url, **kwargs)
+
+    async def login(self, email: str, password: str) -> NoonLoginResponse:
+        async with self.__session.post('https://finn.api.noonhome.com/api/login', json=NoonLoginRequest(email, password)) as response:
+            login_response: NoonLoginResponse = await response.json(loads=_get_loads(NoonLoginResponse))
+            self.__token = login_response.token
+            async with await self.__request(hdrs.METH_GET, 'https://dex.api.noonhome.com/api/endpoints') as response:
                 self.__endpoints = (await response.json(loads=_get_loads(NoonDexResponse))).endpoints
 
-    @property
-    def endpoints(self) -> NoonEndpoints:
-        return self.__endpoints
+            return login_response
+
+    async def _renew_token_sync(self) -> None:
+        if self.__token is not None:
+            async with self.__session.post('https://finn.api.noonhome.com/api/token/renew', json=NoonLoginResponse(self.__token)) as response:
+                self.__token = await response.json(
+                    loads=_get_loads(NoonLoginResponse)).token
 
     @property
     def token(self):
-        return self.__loginReponse.token
+        return self.__.token
+
+    @token.setter
+    def token(self, token: str):
+        self.__.token = token
 
     @property
-    def tokenExpire(self) -> datetime:
-        return self.__loginResponseDate + timedelta(seconds=self.__loginReponse.lifetime)
+    def endpoints(self):
+        return self.__.endpoints
 
-    @property
-    def tokenRenewalExpire(self) -> datetime:
-        return self.__loginResponseDate + timedelta(seconds=self.__loginReponse.renewLifetime)
+    @endpoints.setter
+    def endpoints(self, endpoints: NoonEndpoints):
+        self.__.endpoints = endpoints
 
-    def _create_get_model(self):
-        def get_model(d: dict[str, Any], type: Type):
-            if type not in SUBSCRIBABLE_MODEL_TYPES:
-                return type(**d)
+    async def fetch_model(self) -> NoonModel:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_MODEL_GRAPH_QL_STRING, headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonModel))
 
-            if d['guid'] in self.__models:
-                model = _model_assign(self.__models[d['guid']], d)
-            else:
-                model = type(**d)
-                self.__models[model.guid] = model
-            return model
+    async def query_space(self, guid: str) -> NoonModel:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ spaces (guid: ' + guid + ') { name, icon, guid, type, lightsOn, lightingConfigModified, devices { name, guid, type, isMaster, isOnline, serial, displayName, softwareVersion, expectedSoftwareVersion, batteryLevel, expectedLinesGuid, actualLinesGuid, expectedScenesGuid, actualScenesGuid, scenesAllowed, line { guid, preconfigured }, otaState { guid, type, retryCount, installState, percentDownloaded }, base { guid, firmwareVersion, serial, capabilities { dimming, powerRating } }, capabilities { iconSet, maxScenes, hue, gridView, dimmingBase, dimming, wholeHomeScenes } }, lines {  guid, displayName, lineState, dimmingLevel, dimmable, remoteControllable, preconfigured, bulbType, multiwayMaster { guid }, lights { guid, fixtureType, bulbBrand, bulbQuantity }, externalDevices { externalId, isOnline} }, subspaces { guid, name, lines { guid }, type }, sceneOrder,  activeSceneSchedule { guid }, scenes { guid, icon, name, type, isActive, lightLevels { recommendedMax, recommendedMin, value, lineState, line { guid, lineState, dimmingLevel, displayName, bulbType, remoteControllable } } }, activeScene { guid, name, icon } } }', headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonModel))
 
-        return get_model
+    async def set_line_light_level(self, noon_set_line_light_level_request: NoonSetLineLightLevelRequest) -> None:
+        self.__transactionid += 1
+        noon_set_line_light_level_request.tid = self.__transactionid
+        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightLevel', json=noon_set_line_light_level_request)
 
-    async def query(self) -> NoonModel:
-        await self.authenticate()
-        headers = {'Content-Type': 'application/graphql',
-                   'Authorization': 'Token ' + self.token}
-        async with self.__session.post(self.__endpoints.query + '/api/query', data=GraphQLGenerator.generate(NoonModel), headers=headers) as response:
-            return await response.json(loads=_get_loads(NoonModel, self._create_get_model()))
+    async def set_line_lights_on(self, noon_set_line_lights_on_request: NoonSetLineLightsOnRequest) -> None:
+        self.__transactionid += 1
+        noon_set_line_lights_on_request.tid = self.__transactionid
+        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightsOn', json=noon_set_line_lights_on_request)
+
+    async def _listen(self):
+        async with self.__session.ws_connect(self.__endpoints.notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
+            await ws.ping(NoonClient._PING)
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.PONG:
+                    pass
+                if "notification" in msg.data:
+                    noon_viper: NoonViper = msg.json(
+                        loads=_get_loads(NoonViper))
+                    for change in noon_viper.data.changes:
+                        yield change
 
     async def listen(self):
-        await self.authenticate()
-        headers = {'Authorization': 'Token ' + self.token}
-        async with self.__session.ws_connect(self.__endpoints.notification_ws + '/api/notifications', headers=headers) as ws:
-            async for msg in ws:
-                viper: NoonViper = msg.json(loads=_get_loads(NoonViper))
-                if self.on_change is not None and viper.event == 'notification':
-                    for change in viper.data.changes:
-                        if change.guid in self.__subscriptions:
-                            self.on_change(change)
+        try:
+            async for change in self._listen():
+                yield change
+        except ClientResponseError as err:
+            if err.status != 401:
+                raise err
 
-    def subscribe(self, guid: str):
-        self.__subscriptions.add(guid)
+            await self._renew_token_sync()
 
-    def unsubscribe(self, guid: str):
-        self.__subscriptions.discard(guid)
+            async for change in self._listen():
+                yield change

@@ -6,6 +6,7 @@ from typing import Any, Generic, Type, TypeVar
 import dataclasses
 import json
 import typing
+import stringcase
 
 T = TypeVar('T')
 
@@ -27,7 +28,7 @@ _models_fields_types = {obj: _get_model_fields_types(obj) for (
 
 class ModelJSONEncoder(JSONEncoder):
     def default(self, o):
-        return {k.replace("_", "-"): self.default(v) if isinstance(v, dict) else v for (k, v) in (o if isinstance(o, dict) else dataclasses.asdict(o)).items() if v is not None}
+        return {stringcase.spinalcase(k): self.default(v) if isinstance(v, dict) else v for (k, v) in (o if isinstance(o, dict) else dataclasses.asdict(o)).items() if v is not None}
 
 
 class ModelJSONDecoder(Generic[T], JSONDecoder):
@@ -58,7 +59,7 @@ class ModelJSONDecoder(Generic[T], JSONDecoder):
 
         def map_to_fields(d):
             for (k, v) in d.items():
-                field_name = k.replace('-', '_')
+                field_name = stringcase.snakecase(k)
                 if field_name in _models_fields_types[t]:
                     yield (field_name, get_value(v, _models_fields_types[t][field_name]))
 

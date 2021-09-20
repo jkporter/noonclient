@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Type
 import typing
+import stringcase
 
 
 class GraphQLGenerator:
@@ -13,7 +14,7 @@ class GraphQLGenerator:
                 type) if field.name in type_hints}
             yield '{'
             for name, type in fields.items():
-                yield name.replace("-", "_")
+                yield stringcase.spinalcase(name)
                 type = typing.get_args(type)[0] if typing.get_origin(
                     type) is list else type
                 if dataclasses.is_dataclass(type):
@@ -21,3 +22,4 @@ class GraphQLGenerator:
                         yield s
             yield '}'
         return ' '.join(enumerate(type))
+

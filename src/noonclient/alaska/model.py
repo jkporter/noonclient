@@ -17,11 +17,40 @@ class NoonActiveSceneSchedule:
 
 
 @dataclass
+class NoonAlterLightResponse:
+    oldFixtureType: str = None
+    fixtureType: str = None
+    oldBulbType: str = None
+    oldSmartBulbId: str = None
+    oldBulbBrand: str = None
+    bulbQuantity: int = None
+    oldBulbQuantity: int = None
+    bulbType: str = None
+    bulbBrand: str = None
+    smartBulbId: str = None
+
+
+@dataclass
+class NoonAlterLightRequest:
+    fixtureType: str = None
+    bulbType: str = None
+    bulbQuantity: str = None
+    smartBulb: NoonSmartBulb = None
+    smartBulbId: str = None
+
+
+@dataclass
 class NoonArea:
     name: str = None
     guid: str = None
     type: str = None
     lines: list[NoonLine] = None
+
+
+@dataclass
+class NoonAttribute:
+    key: str = None
+    value: str = None
 
 
 @dataclass
@@ -108,13 +137,6 @@ class NoonChangeWholeHomeSceneRequest:
 
 
 @dataclass
-class NoonMobileTelemetryRequest:
-    system_event: NoonSystemEventRequest = None
-    setup_event: NoonSetupEventRequest = None
-    wifi_event: NoonWiFiEventRequest = None
-    ble_event: NoonBLEEventRequest = None
-
-
 class NoonCurrentSamplingRequest:
     line: str = None
     propagateDimCurve: bool = None
@@ -160,6 +182,20 @@ class NoonDevice:
     smartBulbs: list = None
     capabilities: NoonDeviceCapability = None
     #beaconItem: NoonBeaconItem = None
+
+
+@dataclass
+class NoonDeviceAttribute:
+    name: str = None
+    displayName: str = None
+
+
+@dataclass
+class NoonDeviceAttributeResponse:
+    name: str = None
+    old_name: str = None
+    displayName: str = None
+    old_displayName: str = None
 
 
 @dataclass
@@ -284,6 +320,14 @@ class NoonLightLevel:
     lineState: str = None
     line: NoonLine = None
     #smartBulb: NoonSmartBulb = None
+
+
+@dataclass
+class NoonMobileTelemetryRequest:
+    system_event: NoonSystemEventRequest = None
+    setup_event: NoonSetupEventRequest = None
+    wifi_event: NoonWiFiEventRequest = None
+    ble_event: NoonBLEEventRequest = None
 
 
 @dataclass
@@ -427,6 +471,15 @@ class NoonSetupEventRequest:
     event_type: str = None
     device_id: str = None
     timestamp: str = None
+
+
+@dataclass
+class NoonSmartBulb:
+    guid: str = None
+    name: str = None
+    fixtureType: str = None
+    brand: str = None
+    attributes: list[NoonAttribute] = None
 
 
 @dataclass
