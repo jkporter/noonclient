@@ -79,23 +79,24 @@ class NoonClient:
         if 'headers' not in kwargs:
             kwargs['headers'] = dict()
 
-        kwargs['headers']['Authorization'] = 'Token ' + self.__token
-        kwargs['raise_for_status'] = False
+        for attempt in range(1,3):
+            kwargs['headers']['Authorization'] = 'Token ' + self.__token
+            if attempt == 1:
+                kwargs['raise_for_status'] = False
+            elif raise_for_status is None:
+                del kwargs['raise_for_status']
+            elif raise_for_status:
+                kwargs['raise_for_status'] = True
 
-        response = await self.__session.request(method, url, **kwargs)
-        if response.status != 401:
-            if raise_for_status:
-                response.raise_for_status()
-            return response
-
-        await self.renew_token_sync()
-
-        kwargs['headers']['Authorization'] = 'Token ' + self.__token
-        del kwargs['raise_for_status']
-        if raise_for_status is not None:
-            kwargs['raise_for_status'] = raise_for_status
-
-        return await self.__session.request(method, url, **kwargs)
+            response = await self.__session.request(method, url, **kwargs)
+            if attempt == 1:
+                if response.status != 401:
+                    if raise_for_status:
+                        response.raise_for_status()
+                    break
+                await self.renew_token_sync()
+            
+        return response
 
     async def renew_token(self, noon_login_response: NoonLoginResponse) -> NoonLoginResponse:
         async with self.__session.post('https://finn.api.noonhome.com/api/token/renew', json=noon_login_response) as response:
@@ -117,8 +118,8 @@ class NoonClient:
         async with self.__session.post('https://finn.api.noonhome.com/api/login', json=NoonLoginRequest(email, password)) as response:
             loginresponse: NoonLoginResponse = await response.json(loads=_get_loads(NoonLoginResponse))
             self.__token = loginresponse.token
-            
-            await self._retrieve_endpoints_sync()
+
+            await self.retrieve_endpoints_sync()
 
             return loginresponse
 
@@ -206,25 +207,19 @@ class NoonClient:
     async def set_whole_home_scene(self, noon_change_whole_home_scene_request: NoonChangeWholeHomeSceneRequest):
         await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/structure/scene', json=noon_change_whole_home_scene_request)
 
-    async def _listen(self):
-        async with self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
-            await ws.send_str(NoonClient._PING)
-            async for msg in ws:
-                if "notification" in msg.data:
-                    noon_viper: NoonViper = msg.json(
-                        loads=_get_loads(NoonViper))
-                    for change in noon_viper.data.changes:
-                        yield change
-
     async def listen(self):
-        try:
-            async for change in self._listen():
-                yield change
-        except ClientResponseError as err:
-            if err.status != 401:
+        for attempt in range(1,3):
+            try:
+                async with self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
+                    await ws.send_str(NoonClient._PING)
+                    async for msg in ws:
+                        if "notification" in msg.data:
+                            noon_viper: NoonViper = msg.json(
+                                loads=_get_loads(NoonViper))
+                            for change in noon_viper.data.changes:
+                                yield change
+            except ClientResponseError as err:
+                if err.status == 401 and attempt == 1:
+                    await self.renew_token_sync()
+                    continue
                 raise err
-
-            await self._renew_token_sync()
-
-            async for change in self._listen():
-                yield change
