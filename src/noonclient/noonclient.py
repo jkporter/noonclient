@@ -5,7 +5,7 @@ import aiohttp
 from aiohttp import hdrs
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import ClientResponse
-from noonclient.alaska.model import NoonChangeSceneRequest, NoonChangeWholeHomeSceneRequest, NoonDexResponse, NoonEndpoints, NoonGeofenceEvent, NoonLightsOnStructureRequest, \
+from noonclient.alaska.model import NoonChangeSceneRequest, NoonChangeWholeHomeSceneRequest, NoonDexResponse, NoonEndpoints, NoonGeofenceEvent, NoonLease, NoonLightsOnStructureRequest, \
     NoonLoginRequest, \
     NoonLoginResponse, NoonModel, \
     NoonSetLineLightLevelRequest, \
@@ -119,20 +119,25 @@ class NoonClient:
         async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_BASIC_LEASE_QUERY, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonModel))
 
-    async def query_space(self, guid: str) -> NoonStructure:
+    async def query_space(self, space: str) -> NoonStructure:
         headers = {'Content-Type': 'application/graphql'}
-        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ spaces (guid: ' + guid + ') { name, icon, guid, type, lightsOn, lightingConfigModified, devices { name, guid, type, isMaster, isOnline, serial, displayName, softwareVersion, expectedSoftwareVersion, batteryLevel, expectedLinesGuid, actualLinesGuid, expectedScenesGuid, actualScenesGuid, scenesAllowed, line { guid, preconfigured }, otaState { guid, type, retryCount, installState, percentDownloaded }, base { guid, firmwareVersion, serial, capabilities { dimming, powerRating } }, capabilities { iconSet, maxScenes, hue, gridView, dimmingBase, dimming, wholeHomeScenes } }, lines {  guid, displayName, lineState, dimmingLevel, dimmable, remoteControllable, preconfigured, bulbType, multiwayMaster { guid }, lights { guid, fixtureType, bulbBrand, bulbQuantity }, externalDevices { externalId, isOnline} }, subspaces { guid, name, lines { guid }, type }, sceneOrder,  activeSceneSchedule { guid }, scenes { guid, icon, name, type, isActive, lightLevels { recommendedMax, recommendedMin, value, lineState, line { guid, lineState, dimmingLevel, displayName, bulbType, remoteControllable } } }, activeScene { guid, name, icon } } }', headers=headers) as response:
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ spaces (guid: "' + space + '") { name, icon, guid, type, lightsOn, lightingConfigModified, devices { name, guid, type, isMaster, isOnline, serial, displayName, softwareVersion, expectedSoftwareVersion, batteryLevel, expectedLinesGuid, actualLinesGuid, expectedScenesGuid, actualScenesGuid, scenesAllowed, line { guid, preconfigured }, otaState { guid, type, retryCount, installState, percentDownloaded }, base { guid, firmwareVersion, serial, capabilities { dimming, powerRating } }, capabilities { iconSet, maxScenes, hue, gridView, dimmingBase, dimming, wholeHomeScenes } }, lines {  guid, displayName, lineState, dimmingLevel, dimmable, remoteControllable, preconfigured, bulbType, multiwayMaster { guid }, lights { guid, fixtureType, bulbBrand, bulbQuantity }, externalDevices { externalId, isOnline} }, subspaces { guid, name, lines { guid }, type }, sceneOrder,  activeSceneSchedule { guid }, scenes { guid, icon, name, type, isActive, lightLevels { recommendedMax, recommendedMin, value, lineState, line { guid, lineState, dimmingLevel, displayName, bulbType, remoteControllable } } }, activeScene { guid, name, icon } } }', headers=headers) as response:
             return await response.json(loads=_get_loads(NoonStructure))
 
-    async def query_user_leases(self, guid: str) -> NoonModel:
+    async def query_user_leases(self) -> NoonModel:
         headers = {'Content-Type': 'application/graphql'}
         async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_BASIC_LEASE_QUERY, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonModel))
 
-    async def query_user_info(self, guid: str) -> NoonUser:
+    async def query_user_info(self) -> NoonUser:
         headers = {'Content-Type': 'application/graphql'}
         async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_USER_QUERY, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonUser))
+    
+    async def query_structure(self, structure: str) -> NoonLease:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ structure (guid: "' + structure + '") { name, guid, zipcode, timezone, icon, sceneOrder, sceneSchedules { guid, name, enabled, onTime { hour, minute, relativeTo, type }, offTime { hour,  minute, relativeTo, type }, daysOfWeek, space { guid, name }, scene { guid, name } }, vacationMode { enabled, spaces { guid } }, nightLightMode { enabled, spaces { guid }, scheduleOn { hour, minute }, scheduleOff { hour, minute } }, scenes { guid, name, type, controlSpaces { guid }, spaces {allOff, spaceGuid, sceneGuid } }, spaces { name, icon, guid, type, lightsOn, occupancyDetected, lightingConfigModified, activeScene { guid }, lines { bulbType, dimmingLevel, displayName, externalDevices { externalId, isOnline }, guid, lights { bulbBrand, bulbQuantity, bulbType, fixtureType, guid }, lineState, multiwayMaster { guid }, remoteControllable }, subspaces { guid, name, lines { guid }, type }, sceneOrder, activeSceneSchedule { guid }, scenes { name, guid, icon, type, lightLevels { lineState, recommendedMax, recommendedMin, value, line { guid } } }, devices { accessoryControlGuid, activeDimmingCurve, actualLinesGuid, actualScenesGuid, apRssi, base { capabilities { dimming, powerRating }, firmwareVersion, guid, serial }, baseSerial, batteryLevel, capabilities { elvisCapability, gridView, hue, iconSet, maxScenes, wholeHomeRequest, wholeHomeScenes, wholeHomeState }, currentSamplingState, dimmingAllowed, displayName, expectedLinesGuid, expectedScenesGuid, expectedSoftwareVersion, guid, hardwareRevision, isActive, isMaster, isOnline, line { guid }, mode, modelNumber, name, otaState { guid, installState, percentDownloaded, retryCount, type }, pairingToken, scenesAllowed, serial, smartBulbs { attributes { key, value  }, brand, fixtureType, guid, name }, softwareVersion, type } } } }', headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonLease))
 
     async def set_light(self, space: str,  lights_on: bool) -> ClientResponse:
         noon_change_lights_on_request = NoonChangeLightsOnRequest(
