@@ -4,6 +4,10 @@ A Python client for Noon Lighting System.
 
 ## Sample Usage
 ```Python
+import asyncio
+from noonclient import NoonClient
+from noonclient.alaska.model import NoonLine
+
 async def main():
     async with NoonClient("example@example.com", "<password>") as client:
         model = await client.query()
