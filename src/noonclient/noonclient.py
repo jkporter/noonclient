@@ -42,30 +42,30 @@ class NoonClient:
         return await self.__session.close()
 
     async def __authrequest(self, method, url, **kwargs):
-        raise_for_status: Union[bool,
-                                None] = kwargs['raise_for_status'] if 'raise_for_status' in kwargs else None
+        raise_for_status: Union[bool, None] = kwargs.get(
+            'raise_for_status', None)
 
         kwargs = dict(kwargs)
         if 'headers' not in kwargs:
             kwargs['headers'] = dict()
 
         kwargs['headers']['Authorization'] = 'Token ' + self.__token
-        kwargs['raise_for_status'] = True
+        kwargs['raise_for_status'] = False
 
-        try:
-            return await self.__session.request(method, url, **kwargs)
-        except ClientResponseError as err:
-            if err.status != 401:
-                raise err
+        response = await self.__session.request(method, url, **kwargs)
+        if response.status != 401:
+            if raise_for_status:
+                response.raise_for_status()
+            return response
 
-            await self._renew_token_sync()
+        await self._renew_token_sync()
 
-            kwargs['headers']['Authorization'] = 'Token ' + self.__token
-            del kwargs['raise_for_status']
-            if raise_for_status is not None:
-                kwargs['raise_for_status'] = raise_for_status
+        kwargs['headers']['Authorization'] = 'Token ' + self.__token
+        del kwargs['raise_for_status']
+        if raise_for_status is not None:
+            kwargs['raise_for_status'] = raise_for_status
 
-            return await self.__session.request(method, url, **kwargs)
+        return await self.__session.request(method, url, **kwargs)
 
     async def login(self, email: str, password: str) -> NoonLoginResponse:
         async with self.__session.post('https://finn.api.noonhome.com/api/login', json=NoonLoginRequest(email, password)) as response:
@@ -96,7 +96,7 @@ class NoonClient:
 
     @endpoints.setter
     def endpoints(self, endpoints: NoonEndpoints):
-        self.__.endpoints = endpoints
+        self.__endpoints = endpoints
 
     async def fetch_model(self) -> NoonModel:
         headers = {'Content-Type': 'application/graphql'}
