@@ -26,10 +26,10 @@ async def main():
                 print('    {}: {}, level: {}%'.format(line.displayName, line.lineState, line.dimmingLevel))
             print()
 
-        client.on_change = line_change
         print('Listening for changes...')
         print()
-        await client.listen()
+        async for change in client.listen():
+            line_change(change)
         
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
