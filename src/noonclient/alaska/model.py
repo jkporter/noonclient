@@ -2,6 +2,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+def serializedname(name: str, serializedname: str):
+    def set_serializedname(cls):
+        if not hasattr(cls, '_serializednames'):
+            cls._serializednames = dict()
+            cls._serializednames_rev = dict()
+        cls._serializednames[name] = serializedname
+        cls._serializednames_rev[serializedname] = name
+        return cls
+    return set_serializedname
 
 @dataclass
 class NoonAccountInvitation:
@@ -16,27 +25,42 @@ class NoonActiveSceneSchedule:
     guid: str = None
 
 
+@serializedname('old_fixture_type', 'oldFixtureType')
+@serializedname('fixture_type', 'fixtureType')
+@serializedname('old_bulb_type', 'oldBulbType')
+@serializedname('old_smart_bulb_id', 'oldSmartBulbId')
+@serializedname('old_bulb_brand', 'oldBulbBrand')
+@serializedname('bulb_quantity', 'bulbQuantity')
+@serializedname('old_bulb_quantity', 'oldBulbQuantity')
+@serializedname('bulb_type', 'bulbType')
+@serializedname('bulb_brand', 'bulbBrand')
+@serializedname('smart_bulb_id', 'smartBulbId')
 @dataclass
 class NoonAlterLightResponse:
-    oldFixtureType: str = None
-    fixtureType: str = None
-    oldBulbType: str = None
-    oldSmartBulbId: str = None
-    oldBulbBrand: str = None
-    bulbQuantity: int = None
-    oldBulbQuantity: int = None
-    bulbType: str = None
-    bulbBrand: str = None
-    smartBulbId: str = None
+    old_fixture_type: str = None
+    fixture_type: str = None
+    old_bulb_type: str = None
+    old_smart_bulb_id: str = None
+    old_bulb_brand: str = None
+    bulb_quantity: int = None
+    old_bulb_quantity: int = None
+    bulb_type: str = None
+    bulb_brand: str = None
+    smart_bulb_id: str = None
 
 
+@serializedname('fixture_type', 'fixtureType')
+@serializedname('bulb_type', 'bulbType')
+@serializedname('bulb_quantity', 'bulbQuantity')
+@serializedname('smart_bulb', 'smartBulb')
+@serializedname('smart_bulb_id', 'smartBulbId')
 @dataclass
 class NoonAlterLightRequest:
-    fixtureType: str = None
-    bulbType: str = None
-    bulbQuantity: str = None
-    smartBulb: NoonSmartBulb = None
-    smartBulbId: str = None
+    fixture_type: str = None
+    bulb_type: str = None
+    bulb_quantity: str = None
+    smart_bulb: NoonSmartBulb = None
+    smart_bulb_id: str = None
 
 
 @dataclass
@@ -53,14 +77,16 @@ class NoonAttribute:
     value: str = None
 
 
+@serializedname('firmware_version', 'firmwareVersion')
 @dataclass
 class NoonBase:
     guid: str = None
     serial: str = None
-    firmwareVersion: str = None
+    firmware_version: str = None
     capabilities: NoonCapabilities = None
 
 
+@serializedname('average_distance', 'averageDistance')
 @dataclass
 class NoonBeaconItem:
     uuid: str = None
@@ -68,7 +94,7 @@ class NoonBeaconItem:
     minor: str = None
     state: int = None
     distances: list[float] = None
-    averageDistance: float = None
+    average_distance: float = None
 
 
 @dataclass
@@ -88,23 +114,27 @@ class NoonBLEEventRequest:
     timestamp: str = None
 
 
+@serializedname('propagate_dim_curve', 'propagateDimCurve')
+@serializedname('is_steady_state', 'isSteadyState')
 @dataclass
 class NoonBulbDetectionRequest:
     line: str = None
-    propagateDimCurve: bool = None
-    isSteadyState: bool = None
+    propagate_dim_curve: bool = None
+    is_steady_state: bool = None
 
 
+@serializedname('bulb_type', 'bulbType')
 @dataclass
 class NoonBulbDetectionResponse:
     line: str
-    bulbType: str
+    bulb_type: str
     dimmable: bool
 
 
+@serializedname('power_rating', 'powerRating')
 @dataclass
 class NoonCapabilities:
-    powerRating: Any = None
+    power_rating: Any = None
     dimming: Any = None
 
 
@@ -115,17 +145,19 @@ class NoonChange:
     fields: list[NoonField] = None
 
 
+@serializedname('lights_on', 'lightsOn')
 @dataclass
 class NoonChangeLightsOnRequest:
     space: str = None
-    lightsOn: bool = None
+    lights_on: bool = None
     tid: int = None
 
 
+@serializedname('active_scene', 'activeScene')
 @dataclass
 class NoonChangeSceneRequest:
     space: str = None
-    activeScene: str = None
+    active_scene: str = None
     f129on: bool = None
     tid: int = None
 
@@ -136,11 +168,13 @@ class NoonChangeWholeHomeSceneRequest:
     scene: str = None
 
 
+@serializedname('propagate_dim_curve', 'propagateDimCurve')
+@serializedname('is_steady_state', 'isSteadyState')
 @dataclass
 class NoonCurrentSamplingRequest:
     line: str = None
-    propagateDimCurve: bool = None
-    isSteadyState: bool = None
+    propagate_dim_curve: bool = None
+    is_steady_state: bool = None
 
 
 @dataclass
@@ -148,67 +182,102 @@ class NoonData:
     changes: list[NoonChange] = None
 
 
+@serializedname('accessory_control_guid', 'accessoryControlGuid')
+@serializedname('display_name', 'displayName')
+@serializedname('is_active', 'isActive')
+@serializedname('is_master', 'isMaster')
+@serializedname('is_online', 'isOnline')
+@serializedname('hardware_revision', 'hardwareRevision')
+@serializedname('software_version', 'softwareVersion')
+@serializedname('expected_software_version', 'expectedSoftwareVersion')
+@serializedname('expected_lines_guid', 'expectedLinesGuid')
+@serializedname('actual_lines_guid', 'actualLinesGuid')
+@serializedname('expected_scenes_guid', 'expectedScenesGuid')
+@serializedname('actual_scenes_guid', 'actualScenesGuid')
+@serializedname('base_serial', 'baseSerial')
+@serializedname('model_number', 'modelNumber')
+@serializedname('battery_level', 'batteryLevel')
+@serializedname('ap_rssi', 'apRssi')
+@serializedname('current_sampling_state', 'currentSamplingState')
+@serializedname('dimming_allowed', 'dimmingAllowed')
+@serializedname('scenes_allowed', 'scenesAllowed')
+@serializedname('active_dimming_curve', 'activeDimmingCurve')
+@serializedname('pairing_token', 'pairingToken')
+@serializedname('ota_state', 'otaState')
+@serializedname('smart_bulbs', 'smartBulbs')
+@serializedname('beacon_item', 'beaconItem')
 @dataclass
 class NoonDevice:
     guid: str = None
-    accessoryControlGuid: str = None
+    accessory_control_guid: str = None
     name: str = None
-    displayName: str = None
+    display_name: str = None
     serial: str = None
-    isActive: bool = None
+    is_active: bool = None
     type: str = None
-    isMaster: bool = None
-    isOnline: bool = None
-    hardwareRevision: str = None
-    softwareVersion: str = None
-    expectedSoftwareVersion: str = None
-    expectedLinesGuid: str = None
-    actualLinesGuid: str = None
-    expectedScenesGuid: str = None
-    actualScenesGuid: str = None
-    baseSerial: str = None
+    is_master: bool = None
+    is_online: bool = None
+    hardware_revision: str = None
+    software_version: str = None
+    expected_software_version: str = None
+    expected_lines_guid: str = None
+    actual_lines_guid: str = None
+    expected_scenes_guid: str = None
+    actual_scenes_guid: str = None
+    base_serial: str = None
     mode: str = None
-    modelNumber: str = None
-    batteryLevel: int = None
-    apRssi: int = None
-    currentSamplingState: str = None
-    dimmingAllowed: bool = None
-    scenesAllowed: bool = None
-    activeDimmingCurve: int = None
-    pairingToken: str = None
+    model_number: str = None
+    battery_level: int = None
+    ap_rssi: int = None
+    current_sampling_state: str = None
+    dimming_allowed: bool = None
+    scenes_allowed: bool = None
+    active_dimming_curve: int = None
+    pairing_token: str = None
     base: NoonBase = None
     line: NoonLine = None
-    otaState: NoonOtaState = None
-    smartBulbs: list = None
+    ota_state: NoonOtaState = None
+    smart_bulbs: list = None
     capabilities: NoonDeviceCapability = None
-    #beaconItem: NoonBeaconItem = None
+    #beacon_item: NoonBeaconItem = None
 
 
+@serializedname('display_name', 'displayName')
 @dataclass
 class NoonDeviceAttribute:
     name: str = None
-    displayName: str = None
+    display_name: str = None
 
 
+@serializedname('display_name', 'displayName')
+@serializedname('old_display_name', 'old_displayName')
 @dataclass
 class NoonDeviceAttributeResponse:
     name: str = None
     old_name: str = None
-    displayName: str = None
-    old_displayName: str = None
+    display_name: str = None
+    old_display_name: str = None
 
 
+@serializedname('max_scenes', 'maxScenes')
+@serializedname('whole_home_request', 'wholeHomeRequest')
+@serializedname('whole_home_state', 'wholeHomeState')
+@serializedname('elvis_capability', 'elvisCapability')
+@serializedname('icon_set', 'iconSet')
+@serializedname('grid_view', 'gridView')
+@serializedname('preconfigured_multiway', 'preconfiguredMultiway')
+@serializedname('whole_home_scenes', 'wholeHomeScenes')
 @dataclass
 class NoonDeviceCapability:
-    maxScenes: int = None
-    wholeHomeRequest: int = None
-    wholeHomeState: int = None
+    max_scenes: int = None
+    whole_home_request: int = None
+    whole_home_state: int = None
     hue: int = None
-    elvisCapability: int = None
-    iconSet: int = None
-    gridView: int = None
-    preconfiguredMultiway: int = None
-    wholeHomeScenes: int = None
+    elvis_capability: int = None
+    icon_set: int = None
+    grid_view: int = None
+    preconfigured_multiway: int = None
+    whole_home_scenes: int = None
 
 
 @dataclass
@@ -218,16 +287,24 @@ class NoonDexResponse:
     ttl: int = None
 
 
+@serializedname('privacy_policy', 'privacyPolicy')
+@serializedname('terms_of_service', 'termsOfService')
+@serializedname('email_verification_kb', 'emailVerificationKB')
+@serializedname('dimming_kb', 'dimmingKB')
+@serializedname('alexa_kb', 'alexaKB')
+@serializedname('scheduling_kb', 'schedulingKB')
+@serializedname('google_assistant_kb', 'googleAssistantKB')
+@serializedname('pairing_kb', 'pairingKB')
 @dataclass
 class NoonDexUrls:
-    privacyPolicy: str = None
-    termsOfService: str = None
-    emailVerificationKB: str = None
-    dimmingKB: str = None
-    alexaKB: str = None
-    schedulingKB: str = None
-    googleAssistantKB: str = None
-    pairingKB: str = None
+    privacy_policy: str = None
+    terms_of_service: str = None
+    email_verification_kb: str = None
+    dimming_kb: str = None
+    alexa_kb: str = None
+    scheduling_kb: str = None
+    google_assistant_kb: str = None
+    pairing_kb: str = None
     support: str = None
     contact: str = None
 
@@ -243,10 +320,12 @@ class NoonEndpoints:
     external_device: str = None
 
 
+@serializedname('external_id', 'externalId')
+@serializedname('is_online', 'isOnline')
 @dataclass
 class NoonExternalDevice:
-    externalId: str = None
-    isOnline: bool = None
+    external_id: str = None
+    is_online: bool = None
 
 
 @dataclass
@@ -268,34 +347,46 @@ class NoonLease:
     grants: Any = None
 
 
+@serializedname('bulb_brand', 'bulbBrand')
+@serializedname('bulb_quantity', 'bulbQuantity')
+@serializedname('bulb_type', 'bulbType')
+@serializedname('fixture_type', 'fixtureType')
 @dataclass
 class NoonLight:
     guid: str = None
-    bulbBrand: str = None
-    bulbQuantity: int = None
-    bulbType: str = None
-    fixtureType: str = None
+    bulb_brand: str = None
+    bulb_quantity: int = None
+    bulb_type: str = None
+    fixture_type: str = None
 
 
+@serializedname('lights_on', 'lightsOn')
 @dataclass
 class NoonLightsOnStructureRequest:
-    lightsOn: bool = None
+    lights_on: bool = None
     structure: str = None
     tid: int = None
 
 
+@serializedname('display_name', 'displayName')
+@serializedname('remote_controllable', 'remoteControllable')
+@serializedname('line_state', 'lineState')
+@serializedname('dimming_level', 'dimmingLevel')
+@serializedname('bulb_type', 'bulbType')
+@serializedname('external_devices', 'externalDevices')
+@serializedname('multiway_master', 'multiwayMaster')
 @dataclass
 class NoonLine:
     guid: str = None
-    displayName: str = None
-    remoteControllable: bool = None
+    display_name: str = None
+    remote_controllable: bool = None
     preconfigured: bool = None
-    lineState: str = None
-    dimmingLevel: int = None
-    bulbType: str = None
+    line_state: str = None
+    dimming_level: int = None
+    bulb_type: str = None
     lights: list[NoonLight] = None
-    externalDevices: list[NoonExternalDevice] = None
-    multiwayMaster: NoonMultiwayMaster = None
+    external_devices: list[NoonExternalDevice] = None
+    multiway_master: NoonMultiwayMaster = None
 
 
 @dataclass
@@ -305,21 +396,26 @@ class NoonLoginRequest:
     lifetime: int = None
 
 
+@serializedname('renew_lifetime', 'renewLifetime')
 @dataclass
 class NoonLoginResponse:
     token: str = None
     lifetime: int = None
-    renewLifetime: int = None
+    renew_lifetime: int = None
 
 
+@serializedname('recommended_max', 'recommendedMax')
+@serializedname('recommended_min', 'recommendedMin')
+@serializedname('line_state', 'lineState')
+@serializedname('smart_bulb', 'smartBulb')
 @dataclass
 class NoonLightLevel:
     value: int = None
-    recommendedMax: int = None
-    recommendedMin: int = None
-    lineState: str = None
+    recommended_max: int = None
+    recommended_min: int = None
+    line_state: str = None
     line: NoonLine = None
-    #smartBulb: NoonSmartBulb = None
+    #smart_bulb: NoonSmartBulb = None
 
 
 @dataclass
@@ -342,11 +438,13 @@ class NoonMultiwayMaster:
     guid: str = None
 
 
+@serializedname('schedule_on', 'scheduleOn')
+@serializedname('schedule_off', 'scheduleOff')
 @dataclass
 class NoonNightLightMode:
     enabled: bool = None
-    scheduleOn: NoonScheduleOn = None
-    scheduleOff: NoonScheduleOff = None
+    schedule_on: NoonScheduleOn = None
+    schedule_off: NoonScheduleOff = None
     spaces: list[NoonSpace] = None
 
 
@@ -355,13 +453,16 @@ class NoonOtaRequest:
     guid: str = None
 
 
+@serializedname('retry_count', 'retryCount')
+@serializedname('install_state', 'installState')
+@serializedname('percent_downloaded', 'percentDownloaded')
 @dataclass
 class NoonOtaState:
     type: str = None
     guid: str = None
-    retryCount: int = None
-    installState: str = None
-    percentDownloaded: float = None
+    retry_count: int = None
+    install_state: str = None
+    percent_downloaded: float = None
 
 
 @dataclass
@@ -377,52 +478,63 @@ class NoonProvisionedKey:
     key: str = None
 
 
+@serializedname('provisioned_key', 'provisionedKey')
 @dataclass
 class NoonProvisionedKeyHolder:
-    provisionedKey: NoonProvisionedKey = None
+    provisioned_key: NoonProvisionedKey = None
 
 
+@serializedname('on_time', 'onTime')
+@serializedname('off_time', 'offTime')
 @dataclass
 class NoonPulseLineRequest:
     line: str = None
-    onTime: int = None
-    offTime: int = None
+    on_time: int = None
+    off_time: int = None
     count: int = None
 
 
+@serializedname('is_active', 'isActive')
+@serializedname('light_levels', 'lightLevels')
+@serializedname('transition_on', 'transitionOn')
+@serializedname('transition_off', 'transitionOff')
+@serializedname('motion_activated', 'motionActivated')
 @dataclass
 class NoonScene:
     guid: str = None
     name: str = None
     icon: str = None
-    isActive: bool = None
-    lightLevels: list[NoonLightLevel] = None
-    transitionOn: int = None
-    transitionOff: int = None
+    is_active: bool = None
+    light_levels: list[NoonLightLevel] = None
+    transition_on: int = None
+    transition_off: int = None
     hidden: bool = None
-    motionActivated: bool = None
+    motion_activated: bool = None
     type: str = None
 
 
+@serializedname('on_time', 'onTime')
+@serializedname('off_time', 'offTime')
 @dataclass
 class NoonSceneSchedule:
     guid: str = None
     name: str = None
     enabled: bool = None
-    onTime: NoonSchedule = None
-    offTime: NoonSchedule = None
+    on_time: NoonSchedule = None
+    off_time: NoonSchedule = None
     daysOfWeek = list
     space: NoonSpace = None
     scene: NoonScene = None
 
 
+@serializedname('relative_to', 'relativeTo')
 @dataclass
 class NoonSchedule:
     day: int = None
     hour: int = None
     minute: int = None
     type: str = None
-    relativeTo: str = None
+    relative_to: str = None
 
 
 @dataclass
@@ -444,18 +556,21 @@ class NoonSetDeviceModeRequest:
     line: str = None
 
 
+@serializedname('light_level', 'lightLevel')
+@serializedname('transition_time', 'transitionTime')
 @dataclass
 class NoonSetLineLightLevelRequest:
     line: str = None
-    lightLevel: int = None
+    light_level: int = None
     tid: int = None
-    transitionTime: int = None
+    transition_time: int = None
 
 
+@serializedname('lights_on', 'lightsOn')
 @dataclass
 class NoonSetLineLightsOnRequest:
     line: str = None
-    lightsOn: bool = None
+    lights_on: bool = None
     tid: int = None
 
 
@@ -473,27 +588,33 @@ class NoonSetupEventRequest:
     timestamp: str = None
 
 
+@serializedname('fixture_type', 'fixtureType')
 @dataclass
 class NoonSmartBulb:
     guid: str = None
     name: str = None
-    fixtureType: str = None
+    fixture_type: str = None
     brand: str = None
     attributes: list[NoonAttribute] = None
 
 
+@serializedname('occupancy_detected', 'occupancyDetected')
+@serializedname('lighting_config_modified', 'lightingConfigModified')
+@serializedname('lights_on', 'lightsOn')
+@serializedname('active_scene', 'activeScene')
+@serializedname('active_scene_schedule', 'activeSceneSchedule')
 @dataclass
 class NoonSpace:
     name: str = None
     guid: str = None
     icon: str = None
     type: str = None
-    occupancyDetected: bool = None
-    lightingConfigModified: bool = None
+    occupancy_detected: bool = None
+    lighting_config_modified: bool = None
     lines: list[NoonLine] = None
-    lightsOn: bool = None
-    activeScene: NoonScene = None
-    activeSceneSchedule: NoonActiveSceneSchedule = None
+    lights_on: bool = None
+    active_scene: NoonScene = None
+    active_scene_schedule: NoonActiveSceneSchedule = None
     scenes: list[NoonScene] = None
     devices: list[NoonDevice] = None
     subspaces: list[NoonArea] = None
@@ -506,6 +627,11 @@ class NoonSpaceSetting:
     value: str = None
 
 
+@serializedname('vacation_mode', 'vacationMode')
+@serializedname('night_light_mode', 'nightLightMode')
+@serializedname('scene_schedules', 'sceneSchedules')
+@serializedname('active_scene', 'activeScene')
+@serializedname('scene_order', 'sceneOrder')
 @dataclass
 class NoonStructure:
     name: str = None
@@ -514,18 +640,19 @@ class NoonStructure:
     spaces: list[NoonSpace] = None
     timezone: str = None
     zipcode: str = None
-    vacationMode: NoonVacationMode = None
-    nightLightMode: NoonNightLightMode = None
-    sceneSchedules: list[NoonSceneSchedule] = None
-    activeScene: str = None
-    sceneOrder: str = None
+    vacation_mode: NoonVacationMode = None
+    night_light_mode: NoonNightLightMode = None
+    scene_schedules: list[NoonSceneSchedule] = None
+    active_scene: str = None
+    scene_order: str = None
     scenes: list[NoonWholeHomeScene] = None
 
 
+@serializedname('account_invitations', 'accountInvitations')
 @dataclass
 class NoonStructure__:
     guid: str = None
-    accountInvitations: list[NoonAccountInvitation] = None
+    account_invitations: list[NoonAccountInvitation] = None
 
 
 @dataclass
@@ -549,13 +676,16 @@ class NoonSystemEventRequest:
     app_launch_time: int = None
 
 
+@serializedname('email_valid', 'emailValid')
+@serializedname('incoming_invitations', 'incomingInvitations')
+@serializedname('outgoing_invitations', 'outgoingInvitations')
 @dataclass
 class NoonUser:
     guid: str = None
     name: str = None
-    emailValid: str = None
-    #incomingInvitations: list[NoonIncomingInvitation] = None
-    #outgoingInvitations: list[NoonOutgoingInvitation] = None
+    email_valid: str = None
+    #incoming_invitations: list[NoonIncomingInvitation] = None
+    #outgoing_invitations: list[NoonOutgoingInvitation] = None
 
 
 @dataclass
@@ -567,11 +697,14 @@ class NoonVacationMode:
     #    return 0
 
 
+@serializedname('current_version', 'currentVersion')
+@serializedname('recommended_version', 'recommendedVersion')
+@serializedname('required_version', 'requiredVersion')
 @dataclass
 class NoonVersions:
-    currentVersion: int = None
-    recommendedVersion: int = None
-    requiredVersion: int = None
+    current_version: int = None
+    recommended_version: int = None
+    required_version: int = None
 
 
 @dataclass
@@ -580,12 +713,13 @@ class NoonViper:
     data: NoonData = None
 
 
+@serializedname('control_spaces', 'controlSpaces')
 @dataclass
 class NoonWholeHomeScene:
     name: str = None
     guid: str = None
     spaces: list[NoonWholeHomeSceneSpace] = None
-    controlSpaces: list[NoonWholeHomeSceneControlSpace] = None
+    control_spaces: list[NoonWholeHomeSceneControlSpace] = None
 
 
 @dataclass
@@ -593,11 +727,14 @@ class NoonWholeHomeSceneControlSpace:
     guid: str = None
 
 
+@serializedname('space_guid', 'spaceGuid')
+@serializedname('scene_guid', 'sceneGuid')
+@serializedname('all_off', 'allOff')
 @dataclass
 class NoonWholeHomeSceneSpace:
-    spaceGuid: str = None
-    sceneGuid: str = None
-    allOff: bool = None
+    space_guid: str = None
+    scene_guid: str = None
+    all_off: bool = None
 
 
 @dataclass

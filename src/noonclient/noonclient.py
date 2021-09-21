@@ -1,10 +1,15 @@
-import aiohttp
-import random
 from types import TracebackType
 from typing import Optional, Type, Union
+import random
+import aiohttp
 from aiohttp import hdrs
 from aiohttp.client_exceptions import ClientResponseError
-from noonclient.alaska.model import NoonDexResponse, NoonDexUrls, NoonEndpoints, NoonLoginRequest, NoonLoginResponse, NoonModel, NoonSetLineLightLevelRequest, NoonSetLineLightsOnRequest, NoonViper
+from noonclient.alaska.model import NoonDexResponse, NoonEndpoints, \
+    NoonLoginRequest, \
+    NoonLoginResponse, NoonModel, \
+    NoonSetLineLightLevelRequest, \
+    NoonSetLineLightsOnRequest, \
+    NoonViper
 from noonclient.alaska.model import NoonLoginResponse
 from noonclient._serialization import _json_seralize, _get_loads
 from noonclient.alaska.kush import GraphQLGenerator
@@ -13,7 +18,7 @@ from noonclient.alaska.kush import GraphQLGenerator
 class NoonClient:
     _PING = "{\"ping\":\"milk shake\"}"
 
-    _NOON_MODEL_GRAPH_QL_STRING = GraphQLGenerator.generate(NoonModel)
+    _NOON_MODEL_GRAPHQL_STRING = GraphQLGenerator.generate(NoonModel)
 
     def __init__(self):
         self.__token: str = None
@@ -37,7 +42,8 @@ class NoonClient:
         return await self.__session.close()
 
     async def __authrequest(self, method, url, **kwargs):
-        raise_for_status: Union[bool, None] = kwargs['raise_for_status'] if 'raise_for_status' in kwargs else None
+        raise_for_status: Union[bool,
+                                None] = kwargs['raise_for_status'] if 'raise_for_status' in kwargs else None
 
         kwargs = dict(kwargs)
         if 'headers' not in kwargs:
@@ -51,7 +57,7 @@ class NoonClient:
         except ClientResponseError as err:
             if err.status != 401:
                 raise err
-            
+
             await self._renew_token_sync()
 
             kwargs['headers']['Authorization'] = 'Token ' + self.__token
@@ -63,12 +69,12 @@ class NoonClient:
 
     async def login(self, email: str, password: str) -> NoonLoginResponse:
         async with self.__session.post('https://finn.api.noonhome.com/api/login', json=NoonLoginRequest(email, password)) as response:
-            login_response: NoonLoginResponse = await response.json(loads=_get_loads(NoonLoginResponse))
-            self.__token = login_response.token
-            async with await self.__request(hdrs.METH_GET, 'https://dex.api.noonhome.com/api/endpoints') as response:
+            loginresponse: NoonLoginResponse = await response.json(loads=_get_loads(NoonLoginResponse))
+            self.__token = loginresponse.token
+            async with await self.__authrequest(hdrs.METH_GET, 'https://dex.api.noonhome.com/api/endpoints') as response:
                 self.__endpoints = (await response.json(loads=_get_loads(NoonDexResponse))).endpoints
 
-            return login_response
+            return loginresponse
 
     async def _renew_token_sync(self) -> None:
         if self.__token is not None:
@@ -78,15 +84,15 @@ class NoonClient:
 
     @property
     def token(self):
-        return self.__.token
+        return self.__token
 
     @token.setter
     def token(self, token: str):
-        self.__.token = token
+        self.__token = token
 
     @property
     def endpoints(self):
-        return self.__.endpoints
+        return self.__endpoints
 
     @endpoints.setter
     def endpoints(self, endpoints: NoonEndpoints):
@@ -94,7 +100,7 @@ class NoonClient:
 
     async def fetch_model(self) -> NoonModel:
         headers = {'Content-Type': 'application/graphql'}
-        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_MODEL_GRAPH_QL_STRING, headers=headers) as response:
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_MODEL_GRAPHQL_STRING, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonModel))
 
     async def query_space(self, guid: str) -> NoonModel:
