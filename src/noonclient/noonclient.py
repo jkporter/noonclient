@@ -4,21 +4,25 @@ import random
 import aiohttp
 from aiohttp import hdrs
 from aiohttp.client_exceptions import ClientResponseError
-from noonclient.alaska.model import NoonDexResponse, NoonEndpoints, \
+from aiohttp.client_reqrep import ClientResponse
+from noonclient.alaska.model import NoonChangeSceneRequest, NoonChangeWholeHomeSceneRequest, NoonDexResponse, NoonEndpoints, NoonGeofenceEvent, NoonLightsOnStructureRequest, \
     NoonLoginRequest, \
     NoonLoginResponse, NoonModel, \
     NoonSetLineLightLevelRequest, \
-    NoonSetLineLightsOnRequest, \
-    NoonViper
+    NoonSetLineLightsOnRequest, NoonStructure, NoonUser, \
+    NoonViper, NoonChangeLightsOnRequest
 from noonclient.alaska.model import NoonLoginResponse
 from noonclient._serialization import _json_seralize, _get_loads
 from noonclient.alaska.kush import GraphQLGenerator
 
 
 class NoonClient:
-    _PING = "{\"ping\":\"milk shake\"}"
+    _PING = '{"ping":"milk shake"}'
 
     _NOON_MODEL_GRAPHQL_STRING = GraphQLGenerator.generate(NoonModel)
+    _NOON_USER_QUERY = "{ user { guid, name, emailValid, incomingInvitations { guid, type, token, structure { guid }, state }, outgoingInvitations { guid, type, token, structure { guid }, state } }, preferences { key, value } }"
+    _NOON_BASIC_LEASE_QUERY = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name, type }, spaces { guid, name, icon, type, lightsOn, lines { guid, bulbType, preconfigured, lights { fixtureType }, multiwayMaster { guid } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline, capabilities { wholeHomeScenes } } } } } }"
+    _NOON_LEASE_QUERY = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name }, spaces { guid, name, type, lightsOn, lines { guid, bulbType, lights { fixtureType } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline } } } } }"
 
     def __init__(self):
         self.__token: str = None
@@ -26,6 +30,10 @@ class NoonClient:
             raise_for_status=True, json_serialize=_json_seralize)
         self.__endpoints: NoonEndpoints = None
         self.__transactionid: int = random.randrange(1073741823) + 1000
+        self.__startid: int = self.__transactionid
+
+    def _is_our_transaction(self, i: int):
+        return self.__startid <= i and self.__transactionid - 1 >= i
 
     async def __aenter__(self) -> "NoonClient":
         return self
@@ -82,6 +90,9 @@ class NoonClient:
                 self.__token = await response.json(
                     loads=_get_loads(NoonLoginResponse)).token
 
+    def is_logged_in(self) -> bool:
+        return self.__token is not None
+
     @property
     def token(self):
         return self.__token
@@ -103,27 +114,67 @@ class NoonClient:
         async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_MODEL_GRAPHQL_STRING, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonModel))
 
-    async def query_space(self, guid: str) -> NoonModel:
+    async def get_model(self) -> NoonModel:
         headers = {'Content-Type': 'application/graphql'}
-        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ spaces (guid: ' + guid + ') { name, icon, guid, type, lightsOn, lightingConfigModified, devices { name, guid, type, isMaster, isOnline, serial, displayName, softwareVersion, expectedSoftwareVersion, batteryLevel, expectedLinesGuid, actualLinesGuid, expectedScenesGuid, actualScenesGuid, scenesAllowed, line { guid, preconfigured }, otaState { guid, type, retryCount, installState, percentDownloaded }, base { guid, firmwareVersion, serial, capabilities { dimming, powerRating } }, capabilities { iconSet, maxScenes, hue, gridView, dimmingBase, dimming, wholeHomeScenes } }, lines {  guid, displayName, lineState, dimmingLevel, dimmable, remoteControllable, preconfigured, bulbType, multiwayMaster { guid }, lights { guid, fixtureType, bulbBrand, bulbQuantity }, externalDevices { externalId, isOnline} }, subspaces { guid, name, lines { guid }, type }, sceneOrder,  activeSceneSchedule { guid }, scenes { guid, icon, name, type, isActive, lightLevels { recommendedMax, recommendedMin, value, lineState, line { guid, lineState, dimmingLevel, displayName, bulbType, remoteControllable } } }, activeScene { guid, name, icon } } }', headers=headers) as response:
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_BASIC_LEASE_QUERY, headers=headers) as response:
             return await response.json(loads=_get_loads(NoonModel))
 
-    async def set_line_light_level(self, noon_set_line_light_level_request: NoonSetLineLightLevelRequest) -> None:
+    async def query_space(self, guid: str) -> NoonStructure:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data='{ spaces (guid: ' + guid + ') { name, icon, guid, type, lightsOn, lightingConfigModified, devices { name, guid, type, isMaster, isOnline, serial, displayName, softwareVersion, expectedSoftwareVersion, batteryLevel, expectedLinesGuid, actualLinesGuid, expectedScenesGuid, actualScenesGuid, scenesAllowed, line { guid, preconfigured }, otaState { guid, type, retryCount, installState, percentDownloaded }, base { guid, firmwareVersion, serial, capabilities { dimming, powerRating } }, capabilities { iconSet, maxScenes, hue, gridView, dimmingBase, dimming, wholeHomeScenes } }, lines {  guid, displayName, lineState, dimmingLevel, dimmable, remoteControllable, preconfigured, bulbType, multiwayMaster { guid }, lights { guid, fixtureType, bulbBrand, bulbQuantity }, externalDevices { externalId, isOnline} }, subspaces { guid, name, lines { guid }, type }, sceneOrder,  activeSceneSchedule { guid }, scenes { guid, icon, name, type, isActive, lightLevels { recommendedMax, recommendedMin, value, lineState, line { guid, lineState, dimmingLevel, displayName, bulbType, remoteControllable } } }, activeScene { guid, name, icon } } }', headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonStructure))
+
+    async def query_user_leases(self, guid: str) -> NoonModel:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_BASIC_LEASE_QUERY, headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonModel))
+
+    async def query_user_info(self, guid: str) -> NoonUser:
+        headers = {'Content-Type': 'application/graphql'}
+        async with await self.__authrequest(hdrs.METH_POST, self.__endpoints.query + '/api/query', data=self._NOON_USER_QUERY, headers=headers) as response:
+            return await response.json(loads=_get_loads(NoonUser))
+
+    async def set_light(self, space: str,  lights_on: bool) -> ClientResponse:
+        noon_change_lights_on_request = NoonChangeLightsOnRequest(
+            space, lights_on)
+        self.__transactionid += 1
+        noon_change_lights_on_request.tid = self.__transactionid
+        return await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/space/light', json=noon_change_lights_on_request)
+
+    async def set_structure_lights(self, structure: str,  lights_on: bool) -> None:
+        noon_change_lights_on_request = NoonLightsOnStructureRequest(
+            structure, lights_on)
+        self.__transactionid += 1
+        noon_change_lights_on_request.tid = self.__transactionid
+        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/structure/light', json=noon_change_lights_on_request)
+
+    async def set_scene(self, space: str,  active_scene: str, on: bool) -> ClientResponse:
+        noon_change_scene_request = NoonChangeSceneRequest(
+            space, active_scene, on)
+        self.__transactionid += 1
+        noon_change_scene_request.tid = self.__transactionid
+        return await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/space/light', json=noon_change_scene_request)
+
+    async def send_geofence_crossed_event(self, noon_geofence_event: NoonGeofenceEvent):
+        return await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/structure/geofence', json=noon_geofence_event)
+
+    async def set_line_light_level(self, noon_set_line_light_level_request: NoonSetLineLightLevelRequest) -> ClientResponse:
         self.__transactionid += 1
         noon_set_line_light_level_request.tid = self.__transactionid
-        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightLevel', json=noon_set_line_light_level_request)
+        return await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightLevel', json=noon_set_line_light_level_request)
 
-    async def set_line_lights_on(self, noon_set_line_lights_on_request: NoonSetLineLightsOnRequest) -> None:
+    async def set_line_lights_on(self, noon_set_line_lights_on_request: NoonSetLineLightsOnRequest) -> ClientResponse:
         self.__transactionid += 1
         noon_set_line_lights_on_request.tid = self.__transactionid
-        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightsOn', json=noon_set_line_lights_on_request)
+        return await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/line/lightsOn', json=noon_set_line_lights_on_request)
+
+    async def set_whole_home_scene(self, noon_change_whole_home_scene_request: NoonChangeWholeHomeSceneRequest):
+        await self.__authrequest(hdrs.METH_POST, self.__endpoints.action + '/api/action/structure/scene', json=noon_change_whole_home_scene_request)
 
     async def _listen(self):
         async with self.__session.ws_connect(self.__endpoints.notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
-            await ws.ping(NoonClient._PING)
+            await ws.send_str(NoonClient._PING)
             async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.PONG:
-                    pass
                 if "notification" in msg.data:
                     noon_viper: NoonViper = msg.json(
                         loads=_get_loads(NoonViper))

@@ -158,7 +158,7 @@ class NoonChangeLightsOnRequest:
 class NoonChangeSceneRequest:
     space: str = None
     active_scene: str = None
-    f129on: bool = None
+    on: bool = None
     tid: int = None
 
 
