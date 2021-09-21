@@ -79,7 +79,7 @@ class NoonClient:
         if 'headers' not in kwargs:
             kwargs['headers'] = dict()
 
-        for attempt in range(1,3):
+        for attempt in range(1, 3):
             kwargs['headers']['Authorization'] = 'Token ' + self.__token
             if attempt == 1:
                 kwargs['raise_for_status'] = False
@@ -95,7 +95,7 @@ class NoonClient:
                         response.raise_for_status()
                     break
                 await self.renew_token_sync()
-            
+
         return response
 
     async def renew_token(self, noon_login_response: NoonLoginResponse) -> NoonLoginResponse:
@@ -208,7 +208,7 @@ class NoonClient:
         await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/structure/scene', json=noon_change_whole_home_scene_request)
 
     async def listen(self):
-        for attempt in range(1,3):
+        for attempt in range(1, 3):
             try:
                 async with self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
                     await ws.send_str(NoonClient._PING)
