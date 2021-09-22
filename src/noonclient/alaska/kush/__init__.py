@@ -1,7 +1,6 @@
 import dataclasses
 from typing import Type
 import typing
-import stringcase
 
 
 class GraphQLGenerator:
