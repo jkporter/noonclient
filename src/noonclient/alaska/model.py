@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+
 def serializedname(name: str, serializedname: str):
     def set_serializedname(cls):
         if not hasattr(cls, '_serializednames'):
@@ -11,6 +12,7 @@ def serializedname(name: str, serializedname: str):
         cls._serializednames_rev[serializedname] = name
         return cls
     return set_serializedname
+
 
 @dataclass
 class NoonAccountInvitation:
@@ -249,8 +251,9 @@ class NoonDeviceAttribute:
     display_name: str = None
 
 
+@serializedname('old_name', 'old-name')
 @serializedname('display_name', 'displayName')
-@serializedname('old_display_name', 'old_displayName')
+@serializedname('old_display_name', 'old-displayName')
 @dataclass
 class NoonDeviceAttributeResponse:
     name: str = None
@@ -309,6 +312,8 @@ class NoonDexUrls:
     contact: str = None
 
 
+@serializedname('notification_ws', 'notification-ws')
+@serializedname('external_device', 'external-device')
 @dataclass
 class NoonEndpoints:
     action: str = None
