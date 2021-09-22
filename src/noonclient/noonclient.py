@@ -31,11 +31,11 @@ class NoonClient:
     __noon_model_query: str = None
     __noon_endpoints: NoonEndpoints = None
 
-    @classmethod
+    @staticmethod
     def get_endpoints():
         return NoonClient.__noon_endpoints
 
-    @classmethod
+    @staticmethod
     def set_endpoints(noon_endpoints):
         NoonClient.__noon_endpoints = noon_endpoints
 
@@ -79,9 +79,10 @@ class NoonClient:
         if 'headers' not in kwargs:
             kwargs['headers'] = dict()
 
-        for attempt in range(1, 3):
+        renew_token = True
+        while(True):
             kwargs['headers']['Authorization'] = 'Token ' + self.__token
-            if attempt == 1:
+            if renew_token:
                 kwargs['raise_for_status'] = False
             elif raise_for_status is None:
                 del kwargs['raise_for_status']
@@ -89,14 +90,13 @@ class NoonClient:
                 kwargs['raise_for_status'] = True
 
             response = await self.__session.request(method, url, **kwargs)
-            if attempt == 1:
-                if response.status != 401:
-                    if raise_for_status:
-                        response.raise_for_status()
-                    break
-                await self.renew_token_sync()
+            if not renew_token or response.status != 401:
+                if renew_token and raise_for_status:
+                    response.raise_for_status()
+                return response
 
-        return response
+            await self.renew_token_sync()
+            renew_token = False
 
     async def renew_token(self, noon_login_response: NoonLoginResponse) -> NoonLoginResponse:
         async with self.__session.post('https://finn.api.noonhome.com/api/token/renew', json=noon_login_response) as response:
@@ -131,7 +131,7 @@ class NoonClient:
 
     async def retrieve_endpoints_sync(self) -> bool:
         try:
-            async with self.__session.get('https://finn.api.noonhome.com/api/endpoints') as response:
+            async with await self.__authrequest(hdrs.METH_GET, 'https://finn.api.noonhome.com/api/endpoints') as response:
                 NoonClient.set_endpoints((await response.json(loads=_get_loads(NoonDexResponse))).endpoints)
                 return True
         except:
@@ -208,7 +208,8 @@ class NoonClient:
         await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/structure/scene', json=noon_change_whole_home_scene_request)
 
     async def listen(self):
-        for attempt in range(1, 3):
+        renew_token = True
+        while(True):
             try:
                 async with self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
                     await ws.send_str(NoonClient._PING)
@@ -218,8 +219,9 @@ class NoonClient:
                                 loads=_get_loads(NoonViper))
                             for change in noon_viper.data.changes:
                                 yield change
+                break
             except ClientResponseError as err:
-                if err.status == 401 and attempt == 1:
-                    await self.renew_token_sync()
-                    continue
-                raise err
+                if not renew_token or err.status != 401:
+                    raise
+                await self.renew_token_sync()
+            renew_token = False
