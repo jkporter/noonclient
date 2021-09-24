@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime, time
 from types import TracebackType
 from typing import Any, Optional, Type, Union
 import random
@@ -207,21 +209,40 @@ class NoonClient:
     async def set_whole_home_scene(self, noon_change_whole_home_scene_request: NoonChangeWholeHomeSceneRequest):
         await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/structure/scene', json=noon_change_whole_home_scene_request)
 
+    async def _auth_ws_connect(self):
+        try:
+            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token})
+        except ClientResponseError as err:
+            if err.status != 401:
+                raise
+            await self.renew_token_sync()
+            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token})
+
     async def listen(self):
-        renew_token = True
-        while(True):
+        def should_listen():
+            return self.is_logged_in() and self.__noon_endpoints is not None
+
+        while should_listen():
             try:
-                async with self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token}) as ws:
-                    await ws.send_str(NoonClient._PING)
-                    async for msg in ws:
-                        if "notification" in msg.data:
+                async with await self._auth_ws_connect() as ws:
+                    async def ping():
+                        while not ws.closed and should_listen():
+                            await ws.send_str(NoonClient._PING)
+                            await asyncio.sleep(15)
+
+                    loop = asyncio.get_event_loop()
+                    ping_task = loop.create_task(ping())
+                    try:
+                        async for msg in ws:
+                            if "notification" not in msg.data:
+                                continue
                             noon_viper: NoonViper = msg.json(
                                 loads=_get_loads(NoonViper))
                             for change in noon_viper.data.changes:
                                 yield change
-                break
-            except ClientResponseError as err:
-                if not renew_token or err.status != 401:
-                    raise
-                await self.renew_token_sync()
-            renew_token = False
+                    finally:
+                        ping_task.cancel()
+            except ClientResponseError:
+                pass
+
+            await asyncio.sleep(10)
