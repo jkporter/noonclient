@@ -74,31 +74,22 @@ class NoonClient:
         return await self.__session.close()
 
     async def __authrequest(self, method: str, url: StrOrURL, **kwargs: Any):
-        raise_for_status: Union[bool, None] = kwargs.get(
-            'raise_for_status', None)
-
         kwargs = dict(kwargs)
         if 'headers' not in kwargs:
             kwargs['headers'] = dict()
 
-        renew_token = True
+        retry = True
         while(True):
             kwargs['headers']['Authorization'] = 'Token ' + self.__token
-            if renew_token:
-                kwargs['raise_for_status'] = False
-            elif raise_for_status is None:
-                del kwargs['raise_for_status']
-            elif raise_for_status:
-                kwargs['raise_for_status'] = True
-
-            response = await self.__session.request(method, url, **kwargs)
-            if not renew_token or response.status != 401:
-                if renew_token and raise_for_status:
-                    response.raise_for_status()
-                return response
-
+            try:
+                response = await self.__session.request(method, url, **kwargs)
+                if not retry or response.status != 401:
+                    return response
+            except ClientResponseError as e:
+                if not retry or e.status != 401:
+                    raise
             await self.renew_token_sync()
-            renew_token = False
+            retry = False
 
     async def renew_token(self, noon_login_response: NoonLoginResponse) -> NoonLoginResponse:
         async with self.__session.post('https://finn.api.noonhome.com/api/token/renew', json=noon_login_response) as response:
