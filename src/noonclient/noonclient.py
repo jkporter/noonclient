@@ -47,7 +47,7 @@ class NoonClient:
 
         self.__noon_user_query = "{ user { guid, name, emailValid, incomingInvitations { guid, type, token, structure { guid }, state }, outgoingInvitations { guid, type, token, structure { guid }, state } }, preferences { key, value } }"
         self.noon_basic_lease_query = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name, type }, spaces { guid, name, icon, type, lightsOn, lines { guid, bulbType, preconfigured, lights { fixtureType }, multiwayMaster { guid } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline, capabilities { wholeHomeScenes } } } } } }"
-        self.__noon_lease_query = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name }, spaces { guid, name, type, lightsOn, lines { guid, bulbType, lights { fixtureType } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline } } } } }"
+        # self.__noon_lease_query = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name }, spaces { guid, name, type, lightsOn, lines { guid, bulbType, lights { fixtureType } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline } } } } }"
 
         self.__transactionid: int = random.randrange(1073741823) + 1000
         self.__startid: int = self.__transactionid
@@ -169,21 +169,21 @@ class NoonClient:
         async with await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().query + '/api/query', data='{ structure (guid: "' + structure + '") { name, guid, zipcode, timezone, icon, sceneOrder, sceneSchedules { guid, name, enabled, onTime { hour, minute, relativeTo, type }, offTime { hour,  minute, relativeTo, type }, daysOfWeek, space { guid, name }, scene { guid, name } }, vacationMode { enabled, spaces { guid } }, nightLightMode { enabled, spaces { guid }, scheduleOn { hour, minute }, scheduleOff { hour, minute } }, scenes { guid, name, type, controlSpaces { guid }, spaces {allOff, spaceGuid, sceneGuid } }, spaces { name, icon, guid, type, lightsOn, occupancyDetected, lightingConfigModified, activeScene { guid }, lines { bulbType, dimmingLevel, displayName, externalDevices { externalId, isOnline }, guid, lights { bulbBrand, bulbQuantity, bulbType, fixtureType, guid }, lineState, multiwayMaster { guid }, remoteControllable }, subspaces { guid, name, lines { guid }, type }, sceneOrder, activeSceneSchedule { guid }, scenes { name, guid, icon, type, lightLevels { lineState, recommendedMax, recommendedMin, value, line { guid } } }, devices { accessoryControlGuid, activeDimmingCurve, actualLinesGuid, actualScenesGuid, apRssi, base { capabilities { dimming, powerRating }, firmwareVersion, guid, serial }, baseSerial, batteryLevel, capabilities { elvisCapability, gridView, hue, iconSet, maxScenes, wholeHomeRequest, wholeHomeScenes, wholeHomeState }, currentSamplingState, dimmingAllowed, displayName, expectedLinesGuid, expectedScenesGuid, expectedSoftwareVersion, guid, hardwareRevision, isActive, isMaster, isOnline, line { guid }, mode, modelNumber, name, otaState { guid, installState, percentDownloaded, retryCount, type }, pairingToken, scenesAllowed, serial, smartBulbs { attributes { key, value  }, brand, fixtureType, guid, name }, softwareVersion, type } } } }', headers=headers) as response:
             return await response.json(loads=_get_loads(NoonLease))
 
-    async def set_light(self, space: str,  lights_on: bool) -> ClientResponse:
+    async def set_light(self, space: str, lights_on: bool) -> ClientResponse:
         noon_change_lights_on_request = NoonChangeLightsOnRequest(
             space, lights_on)
         self.__transactionid += 1
         noon_change_lights_on_request.tid = self.__transactionid
         return await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/space/light', json=noon_change_lights_on_request)
 
-    async def set_structure_lights(self, structure: str,  lights_on: bool) -> None:
+    async def set_structure_lights(self, structure: str, lights_on: bool) -> None:
         noon_change_lights_on_request = NoonLightsOnStructureRequest(
             structure, lights_on)
         self.__transactionid += 1
         noon_change_lights_on_request.tid = self.__transactionid
         await self.__authrequest(hdrs.METH_POST, NoonClient.get_endpoints().action + '/api/action/structure/light', json=noon_change_lights_on_request)
 
-    async def set_scene(self, space: str,  active_scene: str, on: bool) -> ClientResponse:
+    async def set_scene(self, space: str, active_scene: str, on: bool) -> ClientResponse:
         noon_change_scene_request = NoonChangeSceneRequest(
             space, active_scene, on)
         self.__transactionid += 1
