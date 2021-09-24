@@ -211,14 +211,20 @@ class NoonClient:
 
     async def _auth_ws_connect(self):
         try:
-            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token})
+            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications',
+                                             headers={
+                                                 'Authorization': 'Token ' + self.__token},
+                                             heartbeat=15)
         except ClientResponseError as err:
             if err.status != 401:
                 raise
             await self.renew_token_sync()
-            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token})
+            return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications',
+                                             headers={
+                                                 'Authorization': 'Token ' + self.__token},
+                                             heartbeat=15)
 
-    async def listen(self, deseralized_names=True):
+    async def listen(self, fld_deseralized_names=True):
         def should_listen():
             return self.is_logged_in() and self.__noon_endpoints is not None and self.__noon_endpoints.notification_ws is not None
 
@@ -227,17 +233,10 @@ class NoonClient:
                 f.name = deserializednames.get(f.name, f.name)
             return change
 
-        transform = set_deseralized_fld_names if deseralized_names else lambda name: name
+        transform = set_deseralized_fld_names if fld_deseralized_names else lambda name: name
         while should_listen():
             try:
                 async with await self._auth_ws_connect() as ws:
-                    async def ping():
-                        while not ws.closed and should_listen():
-                            await ws.send_str(NoonClient._PING)
-                            await asyncio.sleep(15)
-
-                    loop = asyncio.get_event_loop()
-                    ping_task = loop.create_task(ping())
                     async for msg in ws:
                         if "notification" not in msg.data:
                             continue
@@ -245,12 +244,6 @@ class NoonClient:
                             loads=_get_loads(NoonViper))
                         for change in noon_viper.data.changes:
                             yield transform(change)
-                    else:
-                        ping_task.cancel()
-                        try:
-                            await ping_task
-                        except asyncio.CancelledError:
-                            pass
             except ClientResponseError:
                 pass
 
