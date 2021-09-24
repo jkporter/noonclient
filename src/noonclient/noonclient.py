@@ -228,7 +228,6 @@ class NoonClient:
             return change
 
         transform = set_deseralized_fld_names if deseralized_names else lambda name: name
-
         while should_listen():
             try:
                 async with await self._auth_ws_connect() as ws:
@@ -239,16 +238,19 @@ class NoonClient:
 
                     loop = asyncio.get_event_loop()
                     ping_task = loop.create_task(ping())
-                    try:
-                        async for msg in ws:
-                            if "notification" not in msg.data:
-                                continue
-                            noon_viper: NoonViper = msg.json(
-                                loads=_get_loads(NoonViper))
-                            for change in noon_viper.data.changes:
-                                yield transform(change)
-                    finally:
+                    async for msg in ws:
+                        if "notification" not in msg.data:
+                            continue
+                        noon_viper: NoonViper = msg.json(
+                            loads=_get_loads(NoonViper))
+                        for change in noon_viper.data.changes:
+                            yield transform(change)
+                    else:
                         ping_task.cancel()
+                        try:
+                            await ping_task
+                        except asyncio.CancelledError:
+                            pass
             except ClientResponseError:
                 pass
 
