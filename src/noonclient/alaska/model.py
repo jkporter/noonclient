@@ -7,9 +7,9 @@ def serializedname(name: str, serializedname: str):
     def set_serializedname(cls):
         if not hasattr(cls, '_serializednames'):
             cls._serializednames = dict()
-            cls._serializednames_rev = dict()
+            cls._deserializednames = dict()
         cls._serializednames[name] = serializedname
-        cls._serializednames_rev[serializedname] = name
+        cls._deserializednames[serializedname] = name
         return cls
     return set_serializedname
 

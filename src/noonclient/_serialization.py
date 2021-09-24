@@ -31,7 +31,7 @@ deserializednames = dict()
 for _, obj in inspect.getmembers(_models_module):
     if dataclasses.is_dataclass(obj) and hasattr(obj, '_serializednames'):
         serializednames.update(obj._serializednames)
-        deserializednames.update(obj._serializednames_rev)
+        deserializednames.update(obj._deserializednames)
 
 
 class _ModelJSONEncoder(JSONEncoder):
@@ -75,10 +75,10 @@ class _ModelJSONDecoder(Generic[T], JSONDecoder):
             return None
 
         def unserializedname(name: str):
-            return t._serializednames_rev[name] if name in t._serializednames_rev else name
+            return t._deserializednames[name] if name in t._deserializednames else name
 
         transname = unserializedname if hasattr(
-            t, '_serializednames_rev') else lambda x: x
+            t, '_deserializednames') else lambda x: x
 
         def map_to_fields(d):
             for (k, v) in d.items():
@@ -103,9 +103,9 @@ def serializedname(name: str, serializedname: str):
     def set_serializedname(cls):
         if not hasattr(cls, '_serializednames'):
             cls._serializednames = dict()
-            cls._serializednames_rev = dict()
+            cls._deserializednames = dict()
         cls._serializednames[name] = serializedname
-        cls._serializednames_rev[serializedname] = name
+        cls._deserializednames[serializedname] = name
         serializednames[name] = serializedname
         deserializednames[serializedname] = name
         return cls
