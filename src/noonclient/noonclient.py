@@ -8,7 +8,7 @@ from aiohttp import hdrs
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.typedefs import StrOrURL
-from noonclient.alaska.model import NoonChangeSceneRequest, \
+from noonclient.alaska.model import NoonChange, NoonChangeSceneRequest, \
     NoonChangeWholeHomeSceneRequest, \
     NoonDexResponse, \
     NoonEndpoints, \
@@ -24,7 +24,7 @@ from noonclient.alaska.model import NoonChangeSceneRequest, \
     NoonViper, \
     NoonChangeLightsOnRequest
 from noonclient.alaska.model import NoonLoginResponse
-from noonclient._serialization import _json_seralize, _get_loads
+from noonclient._serialization import _json_seralize, _get_loads, deserializednames
 from noonclient.alaska.kush import GraphQLGenerator
 
 
@@ -218,9 +218,16 @@ class NoonClient:
             await self.renew_token_sync()
             return self.__session.ws_connect(NoonClient.get_endpoints().notification_ws + '/api/notifications', headers={'Authorization': 'Token ' + self.__token})
 
-    async def listen(self):
+    async def listen(self, deseralized_names=True):
         def should_listen():
-            return self.is_logged_in() and self.__noon_endpoints is not None
+            return self.is_logged_in() and self.__noon_endpoints is not None and self.__noon_endpoints.notification_ws is not None
+
+        def set_deseralized_fld_names(change: NoonChange):
+            for f in change.fields:
+                f.name = deserializednames.get(f.name, f.name)
+            return change
+
+        transform = set_deseralized_fld_names if deseralized_names else lambda name: name
 
         while should_listen():
             try:
@@ -239,7 +246,7 @@ class NoonClient:
                             noon_viper: NoonViper = msg.json(
                                 loads=_get_loads(NoonViper))
                             for change in noon_viper.data.changes:
-                                yield change
+                                yield transform(change)
                     finally:
                         ping_task.cancel()
             except ClientResponseError:
