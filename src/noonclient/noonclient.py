@@ -1,12 +1,13 @@
 import asyncio
-from datetime import datetime, time
+from dataclasses import fields
 from types import TracebackType
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Type
 import random
 import aiohttp
 from aiohttp import hdrs
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.typedefs import StrOrURL
 from noonclient.alaska.model import NoonChange, NoonChangeSceneRequest, \
     NoonChangeWholeHomeSceneRequest, \
@@ -28,6 +29,14 @@ from noonclient._serialization import _json_seralize, _get_loads, deserializedna
 from noonclient.alaska.kush import GraphQLGenerator
 
 
+def applychangetomodel(change: NoonChange, model):
+    pass
+
+
+def changetodict(change: NoonChange):
+    return {f.name: f.value for f in change.fields}
+
+
 class NoonClient:
     _PING = '{"ping":"milk shake"}'
     __noon_model_query: str = None
@@ -44,6 +53,7 @@ class NoonClient:
     def __init__(self):
         self.__session = aiohttp.ClientSession(
             raise_for_status=True, json_serialize=_json_seralize)
+        self._ws: ClientWebSocketResponse = None
 
         self.__noon_user_query = "{ user { guid, name, emailValid, incomingInvitations { guid, type, token, structure { guid }, state }, outgoingInvitations { guid, type, token, structure { guid }, state } }, preferences { key, value } }"
         self.noon_basic_lease_query = "{ leases { grants, structure { guid, name, icon, vacationMode { enabled }, nightLightMode { enabled }, scenes { guid, name, type }, spaces { guid, name, icon, type, lightsOn, lines { guid, bulbType, preconfigured, lights { fixtureType }, multiwayMaster { guid } }, activeScene { guid }, scenes { guid, name, icon }, devices { guid, type, isMaster, isOnline, capabilities { wholeHomeScenes } } } } } }"
@@ -83,10 +93,10 @@ class NoonClient:
             kwargs['headers']['Authorization'] = 'Token ' + self.__token
             try:
                 response = await self.__session.request(method, url, **kwargs)
-                if not retry or response.status != 401:
+                if response.status != 401 or not retry:
                     return response
             except ClientResponseError as e:
-                if not retry or e.status != 401:
+                if e.status != 401 or not retry:
                     raise
             await self.renew_token_sync()
             retry = False
@@ -116,8 +126,11 @@ class NoonClient:
 
             return loginresponse
 
-    def sign_out(self):
+    async def sign_out(self):
         self.__token = None
+        if self._ws is not None:
+            await self._ws.close()
+            self._ws = None
 
     def is_logged_in(self) -> bool:
         return self.__token is not None
@@ -215,27 +228,39 @@ class NoonClient:
                                                  'Authorization': 'Token ' + self.__token},
                                              heartbeat=15)
 
-    async def listen(self, fld_deseralized_names=True):
-        def should_listen():
-            return self.is_logged_in() and self.__noon_endpoints is not None and self.__noon_endpoints.notification_ws is not None
+    def __should_listen(self):
+        return self.is_logged_in() and self.__noon_endpoints is not None and self.__noon_endpoints.notification_ws is not None
 
+    async def listen(self, fld_deseralized_names=True):
         def set_deseralized_fld_names(change: NoonChange):
             for f in change.fields:
                 f.name = deserializednames.get(f.name, f.name)
             return change
 
         transform = set_deseralized_fld_names if fld_deseralized_names else lambda name: name
-        while should_listen():
-            try:
-                async with await self._auth_ws_connect() as ws:
-                    async for msg in ws:
-                        if "notification" not in msg.data:
-                            continue
-                        noon_viper: NoonViper = msg.json(
-                            loads=_get_loads(NoonViper))
-                        for change in noon_viper.data.changes:
-                            yield transform(change)
-            except ClientResponseError:
-                pass
+        while True:
+            if not self.__should_listen():
+                await asyncio.sleep(10)
+                continue
 
-            await asyncio.sleep(10)
+            while self.__should_listen():
+                try:
+                    if self._ws is not None:
+                        await self._ws.close()
+                        self._ws = None
+
+                    async with await self._auth_ws_connect() as ws:
+                        self._ws = ws
+                        async for msg in ws:
+                            if "notification" not in msg.data:
+                                continue
+                            noon_viper: NoonViper = msg.json(
+                                loads=_get_loads(NoonViper))
+                            for change in noon_viper.data.changes:
+                                yield transform(change)
+                        else:
+                            self._ws = None
+                except ClientResponseError:
+                    pass
+
+                await asyncio.sleep(10)
