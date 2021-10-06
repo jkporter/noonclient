@@ -7,34 +7,45 @@
             "label": "Generate distribution packages",
             "type": "shell",
             "command": "python3 -m build",
-            "windows":{
+            "windows": {
                 "command": "py -m build"
             },
-            "dependsOn":["Install latest PyPA’s build"]
+            "dependsOn": [
+                "Install latest PyPA’s build"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "Upload package to the Test Python Package Index",
             "type": "shell",
             "command": "python3 -m twine upload --repository testpypi dist/*",
-            "windows":{
+            "windows": {
                 "command": "py -m twine upload --repository testpypi dist/*"
             },
-            "dependsOn":["Install Twine"]
+            "dependsOn": [
+                "Install Twine"
+            ]
         },
         {
             "label": "Upload package to the Python Package Index",
             "type": "shell",
             "command": "python3 -m twine upload dist/*",
-            "windows":{
+            "windows": {
                 "command": "py -m twine upload dist/*"
             },
-            "dependsOn":["Install Twine"]
+            "dependsOn": [
+                "Install Twine"
+            ]
         },
         {
             "label": "Install Twine",
             "type": "shell",
             "command": "python3 -m pip install --upgrade twine",
-            "windows":{
+            "windows": {
                 "command": "py -m pip install --upgrade twine"
             }
         },
@@ -42,9 +53,9 @@
             "label": "Install latest PyPA’s build",
             "type": "shell",
             "command": "python3 -m pip install --upgrade build",
-            "windows":{
+            "windows": {
                 "command": "py -m pip install --upgrade build"
             }
-        },
+        }
     ]
 }
