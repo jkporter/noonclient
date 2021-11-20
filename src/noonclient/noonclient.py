@@ -1,5 +1,6 @@
 import asyncio
-from dataclasses import fields
+import dataclasses
+import inspect
 from types import TracebackType
 from typing import Any, Optional, Type
 import random
@@ -25,16 +26,29 @@ from noonclient.alaska.model import NoonChange, NoonChangeSceneRequest, \
     NoonViper, \
     NoonChangeLightsOnRequest
 from noonclient.alaska.model import NoonLoginResponse
-from noonclient._serialization import _json_seralize, _get_loads, deserializednames
+from noonclient._serialization import _json_seralize, _get_loads
 from noonclient.alaska.kush import GraphQLGenerator
 
 
-def applychangetomodel(change: NoonChange, model):
-    pass
+def applychangetomodel(model, change: NoonChange):
+    type = Type(model)
+    if dataclasses.is_dataclass(type) and hasattr(type, '_deseralized_names'):
+        for field in change.fields:
+            fieldname = type._deserializednames.get(field.name, field.name)
+            if hasattr(model, fieldname):
+                setattr(model, fieldname, field.value)
+        return model
+
+    for field in change.fields:
+        if hasattr(model, field.name):
+            setattr(model, field.name, field.value)
+        return model
 
 
-def changetodict(change: NoonChange):
-    return {f.name: f.value for f in change.fields}
+def changetodict(change: NoonChange, type: Type | None):
+    if dataclasses.is_dataclass(type) and hasattr(type, '_deseralized_names'):
+        return {type._deseralized_names.get(f.name, f.name): f.value for f in change.fields}
+    return {type._deserializednames.get(f.name, f.name): f.value for f in change.fields}
 
 
 class NoonClient:
@@ -90,7 +104,8 @@ class NoonClient:
 
         retry = True
         while(True):
-            kwargs['headers']['Authorization'] = 'Token ' + self.__token
+            if self.__token is not None:
+                kwargs['headers']['Authorization'] = 'Token ' + self.__token
             try:
                 response = await self.__session.request(method, url, **kwargs)
                 if response.status != 401 or not retry:
@@ -231,13 +246,7 @@ class NoonClient:
     def __should_listen(self):
         return self.is_logged_in() and self.__noon_endpoints is not None and self.__noon_endpoints.notification_ws is not None
 
-    async def listen(self, fld_deseralized_names=True):
-        def set_deseralized_fld_names(change: NoonChange):
-            for f in change.fields:
-                f.name = deserializednames.get(f.name, f.name)
-            return change
-
-        transform = set_deseralized_fld_names if fld_deseralized_names else lambda name: name
+    async def listen(self, onconnected, ondisconnected):
         while True:
             if not self.__should_listen():
                 await asyncio.sleep(10)
@@ -251,16 +260,28 @@ class NoonClient:
 
                     async with await self._auth_ws_connect() as ws:
                         self._ws = ws
+                        if onconnected is not None:
+                            if inspect.iscoroutinefunction(onconnected):
+                                await onconnected()
+                            else:
+                                onconnected()
                         async for msg in ws:
                             if "notification" not in msg.data:
                                 continue
                             noon_viper: NoonViper = msg.json(
                                 loads=_get_loads(NoonViper))
                             for change in noon_viper.data.changes:
-                                yield transform(change)
+                                yield change
                         else:
                             self._ws = None
                 except ClientResponseError:
                     pass
 
-                await asyncio.sleep(10)
+                futures = [asyncio.sleep(10)]
+                if ondisconnected is not None:
+                    if inspect.iscoroutinefunction(ondisconnected):
+                        futures.append(ondisconnected())
+                    else:
+                        ondisconnected()
+                await asyncio.gather(*futures)
+
