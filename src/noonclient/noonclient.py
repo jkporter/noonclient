@@ -10,12 +10,15 @@ from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.typedefs import StrOrURL
+from rx import subject
+from rx.core.typing import Observable
+from rx.subject.subject import Subject
 from noonclient.alaska.model import NoonChange, NoonChangeSceneRequest, \
     NoonChangeWholeHomeSceneRequest, \
     NoonDexResponse, \
     NoonEndpoints, \
     NoonGeofenceEvent, \
-    NoonLease, \
+    NoonLease, NoonLeaseAccessUser, \
     NoonLightsOnStructureRequest, \
     NoonLoginRequest, \
     NoonLoginResponse, \
@@ -285,3 +288,112 @@ class NoonClient:
                         ondisconnected()
                 await asyncio.gather(*futures)
 
+
+class NoonModelService:
+
+    _ALASKA_PREFS = "ALASKA_PREFS"
+    _CURRENT_STRUCTURE = "CurrentStructure"
+    # public static final Companion companion = new Companion((DefaultConstructorMarker) null);
+    _TAG = "Noon-NoonModelService"
+    _current_structure_guid: str
+    _init_counter: int
+    _instance: "NoonModelService"
+    _m_lease_access_users : list[NoonLeaseAccessUser]
+    #mStructureOutgoingInvitations : list[NoonOutgoingInvitation]
+    noon_lease_access_user_observable: Subject[list[NoonLeaseAccessUser]];
+    # public static Observable<ArrayList<NoonLeaseAccessUser>> noonLeaseAccessUsersDebounce;
+    _noon_model = NoonModel()
+    _noon_model_debounce: Observable[NoonModel]
+    _noon_model_matching_guids_debounce: Observable[NoonModel]
+    _noon_model_matching_guids_observable: Subject[NoonModel, NoonModel]
+    _noon_model_observable: Subject[NoonModel, NoonModel]
+
+    def notify_change(this):
+        publish_subject = NoonModelService._noon_model_observable
+        if publish_subject is None:
+            raise Exception()
+        publish_subject.on_next(NoonModelService._noon_model)
+
+    def notify_lease_access_change(this):
+        publish_subject = NoonModelService.noon_lease_access_user_observable
+        if publish_subject is None:
+            raise Exception()
+        arrayList = this._m_lease_access_users
+        if arrayList is None:
+             arrayList = list[str]()
+        publish_subject.on_next(arrayList)
+
+    def notify_matching_guids_change(this):
+        publish_subject = NoonModelService._noon_model_matching_guids_observable
+        if publish_subject is None:
+            raise Exception()
+        publish_subject.on_next(NoonModelService._noon_model)
+
+    def notify_complete(this):
+        publish_subject = NoonModelService._noon_model_observable
+        if publish_subject is None:
+            raise Exception()
+        publish_subject.on_completed()
+
+    def notify_error(this, error: Exception):
+        publish_subject = NoonModelService._noon_model_observable
+        if publish_subject is None:
+            raise Exception()
+        publish_subject.on_error(error)
+
+    def get_noon_model_observable():
+        observable = NoonModelService._noon_model_debounce
+        if observable is None:
+            raise Exception()
+        return observable
+
+    # @NotNull
+    # public final Observable<ArrayList<NoonLeaseAccessUser>> getUserAccessObservable() {
+    #     Observable<ArrayList<NoonLeaseAccessUser>> observable = noonLeaseAccessUsersDebounce;
+    #     if (observable == null) {
+    #         Intrinsics.throwUninitializedPropertyAccessException("noonLeaseAccessUsersDebounce");
+    #     }
+    #     return observable;
+    # }
+
+    # @NotNull
+    # public final Observable<NoonModel> getNoonModelMatchingGuidsObservable() {
+    #     Observable<NoonModel> observable = noonModelMatchingGuidsDebounce;
+    #     if (observable == null) {
+    #         Intrinsics.throwUninitializedPropertyAccessException("noonModelMatchingGuidsDebounce");
+    #     }
+    #     return observable;
+    # }
+
+    def get_model(this):
+        if NoonModelService._noon_model is None:
+            NoonModelService._noon_model = NoonModel()
+        return NoonModelService._noon_model
+
+    def delete_model(this):
+        NoonModelService._noon_model = None
+
+    # @Nullable
+    # public final NoonUser getUser() {
+    #     NoonModel noonModel2 = noonModel;
+    #     if ((noonModel2 != null ? noonModel2.getUser() : null) == null) {
+    #         return null;
+    #     }
+    #     NoonModel noonModel3 = noonModel;
+    #     if (noonModel3 == null) {
+    #         Intrinsics.throwNpe();
+    #     }
+    #     NoonUser user = noonModel3.getUser();
+    #     if (user == null) {
+    #         Intrinsics.throwNpe();
+    #     }
+    #     return user;
+    # }
+
+    # public final void alterPreferences(@Nullable ArrayList<NoonPreference> arrayList) {
+    #     NoonModel noonModel2 = noonModel;
+    #     if (noonModel2 != null) {
+    #         noonModel2.setPreferences(arrayList);
+    #     }
+    #     notifyChange();
+    # }
