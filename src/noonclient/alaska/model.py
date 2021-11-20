@@ -351,6 +351,14 @@ class NoonLease:
     structure: NoonStructure = None
     grants: Any = None
 
+@dataclass
+@serializedname('invited_guid', 'inviteGuid')
+class NoonLeaseAccessUser:
+    email: str = None
+    invited_guid: str = None
+    status: str = None
+    guid: str = None
+    grants: str = list[str]
 
 @serializedname('bulb_brand', 'bulbBrand')
 @serializedname('bulb_quantity', 'bulbQuantity')
